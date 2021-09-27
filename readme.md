@@ -1,1 +1,3 @@
-# A Simple Webpack 5 boilerplate with babel, eslint airbnb, scss postss configurations 
+# Steampunk theme
+A little project, which is used to play with **HTML5 canvas and Threejs**  
+The only goal of this project is inspirate you to make cool things.  

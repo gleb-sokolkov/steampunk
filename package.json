@@ -23,7 +23,8 @@
   },
   "homepage": "https://github.com/gleb-sokolkov/tasks.git#readme",
   "dependencies": {
-    "express": "^4.17.1"
+    "express": "^4.17.1",
+    "three": "^0.132.2"
   },
   "devDependencies": {
     "@babel/core": "^7.15.5",

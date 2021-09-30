@@ -19,7 +19,11 @@ const quadUniform = {
   },
   resolution: {
     type: 'v2',
-    value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+    value: null,
+  },
+  scrollY: {
+    type: 'f',
+    value: 0,
   },
 };
 
@@ -34,7 +38,10 @@ const camera = new THREE.OrthographicCamera(
   1000,
 );
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({
+  canvas: document.getElementById('noiseBG'),
+  antialias: true,
+});
 
 window.addEventListener('resize', () => {
   [camera.left, camera.right, camera.top, camera.bottom] = getFullScreenCorners();
@@ -42,8 +49,16 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   quadUniform.resolution.value = new THREE.Vector2(window.innerWidth, window.innerHeight);
 });
+window.addEventListener('scroll', () => {
+  const mh = document.body.clientHeight;
+  const wh = window.innerHeight;
+  const ws = window.scrollY;
+  const val = ws / (mh - wh + 0.1);
+  quadUniform.scrollY.value = val;
+});
+
 window.dispatchEvent(new Event('resize'));
-document.body.appendChild(renderer.domElement);
+window.dispatchEvent(new Event('scroll'));
 
 const fullQuad = new THREE.PlaneGeometry(width, height);
 const quadMaterial = new THREE.ShaderMaterial({

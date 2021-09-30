@@ -1,3 +1,32 @@
 html, body {
   min-height: 100vh;
+  position: relative;
 }
+
+#noiseBG {
+  position: fixed;
+  z-index: -1;
+  top: 0;
+  left: 0;
+}
+
+.test {
+  display: block;
+  width: 50%;
+  height: 2000px;
+  margin: 0 auto;
+  opacity: 0;
+
+  &_theme_red {
+    background-color: salmon;
+  }
+
+  &_theme_green {
+    background-color: rgb(114, 250, 148);
+  }
+
+  &_theme_blue {
+    background-color: rgb(114, 173, 250);
+  }
+}
+

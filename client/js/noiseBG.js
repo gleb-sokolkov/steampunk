@@ -12,7 +12,12 @@ function getFullScreenCorners() {
   ];
 }
 
-const quadUniform = {
+const width = window.innerWidth;
+const height = window.innerHeight;
+const scene = new THREE.Scene();
+const clock = new THREE.Clock();
+
+const noiseU = {
   time: {
     type: 'f',
     value: 0,
@@ -27,9 +32,6 @@ const quadUniform = {
   },
 };
 
-const width = window.innerWidth;
-const height = window.innerHeight;
-const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xffffff);
 
 const camera = new THREE.OrthographicCamera(
@@ -43,37 +45,37 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
 });
 
+// --------------------------------------------------------------------------------- Window events
 window.addEventListener('resize', () => {
   [camera.left, camera.right, camera.top, camera.bottom] = getFullScreenCorners();
   camera.updateMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight, false);
-  quadUniform.resolution.value = new THREE.Vector2(window.innerWidth, window.innerHeight);
+  noiseU.resolution.value = new THREE.Vector2(window.innerWidth, window.innerHeight);
 });
 window.addEventListener('scroll', () => {
   const mh = document.body.clientHeight;
   const wh = window.innerHeight;
   const ws = window.scrollY;
   const val = ws / (mh - wh + 0.1);
-  quadUniform.scrollY.value = val;
+  noiseU.scrollY.value = val;
 });
+// --------------------------------------------------------------------------------- Window events
 
 window.dispatchEvent(new Event('resize'));
 window.dispatchEvent(new Event('scroll'));
 
-const fullQuad = new THREE.PlaneGeometry(width, height);
+const noiseQuad = new THREE.PlaneGeometry(width, height);
 const quadMaterial = new THREE.ShaderMaterial({
-  uniforms: quadUniform,
+  uniforms: noiseU,
   vertexShader: vertex,
   fragmentShader: fragment,
 });
-const quad = new THREE.Mesh(fullQuad, quadMaterial);
+const quad = new THREE.Mesh(noiseQuad, quadMaterial);
 quad.position.z = -1;
 scene.add(quad);
-
-const clock = new THREE.Clock();
 
 (function animate() {
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
-  quadUniform.time.value = clock.getElapsedTime();
+  noiseU.time.value = clock.getElapsedTime();
 }());

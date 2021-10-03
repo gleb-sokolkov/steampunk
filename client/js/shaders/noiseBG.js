@@ -104,7 +104,7 @@ const fragment = `
   {
     const vec2 size = vec2(30.0);
     const float density = 1.0;
-    const float circleRadius = 0.1;
+    const float circleRadius = 0.15;
 
     vec2 sp = vec2(-50.0, 25.0);
     vec3 col = vec3(0.0);
@@ -135,7 +135,7 @@ const fragment = `
 
   vec3 getRainColor(vec2 uv, float s) 
   {
-    const float brightness = 3.;
+    const float brightness = 1.;
     float rn = rainfbm(vec2(uv.x+uv.y, uv.y));
     return skyDown*rn*pow(1.-s, 2.)*brightness;
   }

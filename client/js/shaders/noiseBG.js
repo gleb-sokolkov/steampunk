@@ -54,7 +54,10 @@ const fragment = `
   const vec3 skyUp = vec3(0.7, 0.75, 0.8);
   const vec3 skyDown = vec3(0.12, 0.14, 0.2);
   const vec3 sunColor = vec3(1.0, 0.75, 0.65);
+  const vec3 tColor = vec3(.85, .9, 1.);
 
+
+  const float twidth = 0.02;
 
   float fbm(vec2 x) 
   {
@@ -79,6 +82,22 @@ const fragment = `
   float random(vec2 v) 
   {
     return fract(sin(dot(v, vec2(1421.124, 14127.1231))));
+  }
+
+  float plot(vec2 st, float pct, float w)
+  {
+    return  smoothstep( pct-w, pct, st.y) -
+            smoothstep( pct, pct+w, st.y);
+  }
+
+
+
+  float getS(vec2 uv, vec2 muv) 
+  {
+    float invY = 1.-uv.y;
+    float t = fbm(muv*size*invY)*.25+.75;
+    t = mix(t, 0.0, uv.y-1.0);
+    return pow(t, 2.*invY)*(uv.y+.25);
   }
 
   float rainfbm(vec2 uv) 
@@ -114,12 +133,11 @@ const fragment = `
     return v;
   }
 
-  float getS(vec2 uv, vec2 muv) 
+  vec3 getRainColor(vec2 uv, float s) 
   {
-    float invY = 1.-uv.y;
-    float t = fbm(muv*size*invY)*.25+.75;
-    t = mix(t, 0.0, uv.y-1.0);
-    return pow(t, 2.*invY)*(uv.y+.25);
+    const float brightness = 3.;
+    float rn = rainfbm(vec2(uv.x+uv.y, uv.y));
+    return skyDown*rn*pow(1.-s, 2.)*brightness;
   }
 
   vec3 clouds(vec2 muv, float s) 
@@ -132,25 +150,89 @@ const fragment = `
     return color + (sunColor*0.4*sunFlare + sun*sunColor)*s*(1.-scrollY);
   }
 
+  float tshape(vec2 uv) 
+  {
+    float baseSize = 6.0;     
+    vec2 tuv = fract(uv*vec2(baseSize, 1.));
+    vec2 tid = floor(uv*vec2(baseSize, 1.));
+    float r = random(tid.x);
+    float d = step(r, 0.5);
+    
+    const int octaves = 2;
+    const vec2 td = vec2(.002,.998);
+    const float tf = 0.02;
+    const float tspeed = 10.;
+    const float tStrength = 2000.;
+
+    float tline = 0.;
+    float a = 0.1;
+    
+    for(int k = 0; k < octaves; k++) 
+    {
+      float y = 0.0;
+      float amplitude = 0.5;
+      float frequency = 2.0;
+      float sum_a = 0.0;
+      
+      vec2 tuv2 = fract(uv*vec2(baseSize, 1.));
+      vec2 tid2 = floor(uv*vec2(baseSize, 1.));
+      float r2 = random(tid2.x);
+      float rl = random(tid2.x+floor(time*2.0));
+      float d2 = step(r2, .5);
+
+      const int sin_octaves = 6;
+      const float density = 1.0;
+      const float shift = 10.0;
+      float lacunarity = 2.0 + rl * 2.0;
+      float gain = 0.5 - rl * 0.2;
+
+      for(int i = 0; i < sin_octaves; i++) 
+      {
+        y += sin(tuv.y*frequency)*amplitude;
+        frequency *= lacunarity;
+        sum_a += amplitude;
+        amplitude *= gain;
+      }
+  
+      y /= sum_a;
+      y = abs(d2 - y)*.9;
+  
+      //this row makes lines seamless. This works correct only with numbers which are multiple of two 
+      const float seamlessFactor = 4.;
+      y = mix(y, .5, pow(tuv.y*2.-1., seamlessFactor));
+      
+      float lightDuration = smoothstep(td.x, .0, abs(fract(time*tf+rl*0.001)-r2*td.y+td.x));
+      tline += plot(tuv2.yx, y, twidth) * a * lightDuration;
+      tline += plot(tuv2.yx, y, 0.4) * a * .1 * lightDuration;
+
+      uv = uv * 2.0 + shift;
+
+      a *= .75;
+    }
+
+    return tline*tStrength;
+  }
+
+  vec3 getStormColor(vec2 uv, float s) {
+    float tline = tshape(uv)*smoothstep(0.,1.,uv.y+.3);
+    tline *= pow(1.-s, 8.);
+    return tline * tColor;
+  } 
+
   void main()
   {
     vec2 uv = gl_FragCoord.xy / resolution.y;
     vec2 muv = (gl_FragCoord.xy - resolution * .5) / resolution.y;
-    uv.y -= scrollY*0.35;
+    uv.y -= .35*scrollY;
 
     float s = getS(uv, muv);
-
-    //---------------------------------------------------------------- clouds
     vec3 color = clouds(muv, s);
-    //---------------------------------------------------------------- clouds
-    
+    color += getRainColor(uv, s);
+    color += getStormColor(uv, s);
 
-    //---------------------------------------------------------------- rain
-    float rn = rainfbm(vec2(uv.x+uv.y, uv.y));
-    vec3 rain = skyDown*rn*(1.-s);
+    // bottom shading
+    color *= 1.-pow(uv.y-1.+.35, 4.0);
 
-    color += rain;
-    //---------------------------------------------------------------- rain
 
     gl_FragColor = vec4(color, 1.0);
   }

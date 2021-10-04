@@ -162,7 +162,7 @@ const fragment = `
     const vec2 td = vec2(.002,.998);
     const float tf = 0.02;
     const float tspeed = 10.;
-    const float tStrength = 2000.;
+    const float tStrength = 4000.;
 
     float tline = 0.;
     float a = 0.1;
@@ -231,7 +231,7 @@ const fragment = `
     color += getStormColor(uv, s);
 
     // bottom shading
-    color *= 1.-pow(uv.y-1.+.35, 4.0);
+    color *= 1.-pow(uv.y-1.+.35, 2.0);
 
 
     gl_FragColor = vec4(color, 1.0);

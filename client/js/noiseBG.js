@@ -16,6 +16,7 @@ const clock = new THREE.Clock();
 let preScene; let postScene;
 let camera;
 let renderTarget; let renderer; let composer;
+let noiseQuad; let finalQuad; let shadeMesh;
 
 const defaultU = {
   time: {
@@ -43,15 +44,20 @@ function getFullScreenCorners() {
 
 function onWindowResize() {
   [camera.left, camera.right, camera.top, camera.bottom] = getFullScreenCorners();
-  camera.updateMatrix();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
   renderTarget.setSize(
-    window.innerWidth * renderer.getPixelRatio(),
-    window.innerHeight * renderer.getPixelRatio(),
+    window.innerWidth,
+    window.innerHeight,
   );
+
   composer.setSize(window.innerWidth, window.innerHeight);
+
   defaultU.resolution.value = new THREE.Vector2(window.innerWidth, window.innerHeight);
+
+  noiseQuad.scale.set(window.innerWidth, window.innerHeight);
+  finalQuad.scale.set(window.innerWidth, window.innerHeight);
+  shadeMesh.scale.set(window.innerWidth, window.innerHeight);
 }
 
 function onWindowScroll() {
@@ -83,12 +89,11 @@ function init() {
     antialias: true,
   });
 
-  renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
 
   renderTarget = new THREE.WebGLMultipleRenderTargets(
-    window.innerWidth * renderer.getPixelRatio(),
-    window.innerHeight * renderer.getPixelRatio(),
+    window.innerWidth,
+    window.innerHeight,
     1,
   );
 
@@ -111,14 +116,13 @@ function init() {
   );
 
   // --------------------------------------------------------------------------------- Pre render
-  const noiseQuadGeometry = new THREE.PlaneGeometry(window.innerWidth, window.innerHeight);
   const noiseQuadMaterial = new THREE.ShaderMaterial({
     uniforms: defaultU,
     vertexShader: noiseBG.vertex,
     fragmentShader: noiseBG.fragment,
     glslVersion: THREE.GLSL3,
   });
-  const noiseQuad = new THREE.Mesh(noiseQuadGeometry, noiseQuadMaterial);
+  noiseQuad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), noiseQuadMaterial);
   noiseQuad.position.z = -1;
   preScene.add(noiseQuad);
   // --------------------------------------------------------------------------------- Pre render
@@ -130,17 +134,15 @@ function init() {
     },
   });
   postScene = new THREE.Scene();
-  const finalQuadGeometry = noiseQuadGeometry.clone();
   const finalQuadMaterial = new THREE.ShaderMaterial({
     uniforms: targetU,
     vertexShader: rain.vertex,
     fragmentShader: rain.fragment,
     glslVersion: THREE.GLSL3,
   });
-  const finalQuad = new THREE.Mesh(finalQuadGeometry, finalQuadMaterial);
+  finalQuad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), finalQuadMaterial);
   finalQuad.position.z = -2;
 
-  const shadeGeometry = noiseQuadGeometry.clone();
   const shadeMaterial = new THREE.ShaderMaterial({
     uniforms: targetU,
     vertexShader: shade.vertex,
@@ -148,7 +150,7 @@ function init() {
     glslVersion: THREE.GLSL3,
     transparent: true,
   });
-  const shadeMesh = new THREE.Mesh(shadeGeometry, shadeMaterial);
+  shadeMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shadeMaterial);
   shadeMesh.position.z = -1;
   postScene.add(finalQuad, shadeMesh);
   // --------------------------------------------------------------------------------- Post render

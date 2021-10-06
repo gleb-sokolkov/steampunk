@@ -7,7 +7,7 @@ const vertex = `
     vUv = uv;
   }
 `;
-const fragment = `
+const fragment = ` 
   layout(location = 0) out vec4 pc_FragColor;
 
   uniform float time;
@@ -21,7 +21,7 @@ const fragment = `
   {
     vec2 uv = gl_FragCoord.xy / resolution.y;
     uv.y -= .35*scrollY;
-    float shade = pow(uv.y-.65, 2.);
+    float shade = pow(uv.y-.65, 2.0);
     pc_FragColor = vec4(vec3(.0), shade);
   }
 `;

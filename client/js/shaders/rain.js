@@ -81,7 +81,8 @@ const fragment = `
   vec3 clouds(vec2 muv, float s) 
   {
     vec3 color = mix(skyDown, skyUp, s);
-    float sp = length(vec2(muv.x-0.4, muv.y-0.3));
+    float aspect = resolution.x / resolution.y;
+    float sp = length(vec2(muv.x-0.25*aspect, muv.y-0.3));
     float sun = smoothstep(0.04, 0.0, sp);
     float sunFlare = smoothstep(0.7, 0.0, sp);
 

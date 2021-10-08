@@ -5,4 +5,4 @@ public
 .DS_Store
 *.xcf
 *.psd
-client/images/test.*
+client/images/*test*.*

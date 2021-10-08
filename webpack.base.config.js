@@ -20,9 +20,22 @@ module.exports = {
                 exclude: /node_modules/,
                 use: ['babel-loader'],
             },
+            //images without applying compression
+            {
+                test: /_\.(png|jpg|jpeg)$/,
+                use: [
+                    {
+                        loader: 'file-loader',
+                        options: {
+                            name: config.webpack.output.images,
+                            esModule: false,
+                        },
+                    },
+                ],
+            },
             //static-images
             {
-                test: /\.(?:ico|git|png|jpg|jpeg|webp)$/,
+                test: /[^_]\.(?:ico|gif|png|jpg|jpeg|webp)$/,
                 use: [
                     {
                         loader: 'file-loader',

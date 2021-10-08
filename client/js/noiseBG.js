@@ -15,7 +15,8 @@ import * as noiseBG from './shaders/noiseBG';
 import * as rain from './shaders/rain';
 import * as shade from './shaders/shade';
 
-import shadeTexture from '../images/test.jpg';
+// image import example
+// import shadeTexture from '../images/shade_.png';
 
 const clock = new THREE.Clock();
 
@@ -26,7 +27,7 @@ const updatableU = {
     value: 0,
   },
   resolution: {
-    type: 'f',
+    type: 'v2',
     value: null,
   },
   scrollY: {
@@ -81,10 +82,15 @@ function onWindowScroll() {
   updatableU.scrollY.value = val;
 }
 
-async function setupTexture(path, wrapS, wrapT) {
+async function setupTexture(
+  path, wrapS, wrapT,
+  minFilter = THREE.NearestFilter,
+  magFilter = THREE.NearestFilter,
+) {
   const loader = new THREE.TextureLoader();
   const texture = loader.load(path);
   [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
+  [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
   return texture;
 }
 
@@ -171,19 +177,6 @@ async function init() {
 
   composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(postScene, camera);
-  const shadePass = new ShaderPass({
-    uniforms: {
-      tDiffuse: { value: null },
-      shadetex: {
-        type: 't',
-        value: null,
-      },
-      scrollY: null,
-    },
-    vertexShader: shade.vertex,
-    fragmentShader: shade.fragment,
-    glslVersion: THREE.GLSL3,
-  });
   const filmPass = new FilmPass(
     0.05,
     0.0,
@@ -192,17 +185,18 @@ async function init() {
   );
   filmPass.renderToScreen = true;
   composer.addPass(renderPass);
-  composer.addPass(shadePass);
   composer.addPass(filmPass);
 
   // why it isn't possible to do in the constructor?
-  shadePass.uniforms.shadetex.value = await setupTexture(
-    shadeTexture,
-    THREE.RepeatWrapping,
-    THREE.ClampToEdgeWrapping,
-  );
-  // Here it's same
-  shadePass.uniforms.scrollY = updatableU.scrollY;
+  // shadePass.uniforms.shadetex.value = await setupTexture(
+  //   shadeTexture,
+  //   THREE.RepeatWrapping,
+  //   THREE.ClampToEdgeWrapping,
+  //   THREE.LinearFilter,
+  //   THREE.LinearFilter,
+  // );
+  // Use this to setup shader's uniforms
+  // ShaderPass.uniforms;
 
   // --------------------------------------------------------------------------------- Window events
   window.addEventListener('resize', onWindowResize);

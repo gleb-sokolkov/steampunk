@@ -7,23 +7,24 @@ const vertex = `
     vUv = uv;
   }
 `;
-const fragment = ` 
+const fragment = `
+  precision mediump float;
   uniform float time;
   uniform vec2 resolution;
   uniform float scrollY;
   uniform sampler2D tDiffuse;
-  uniform sampler2D shadetex;
 
   in vec2 vUv;
+
+  const vec3 shadeColor = vec3(.04, .04, .04);
 
   void main() 
   {
     vec4 lastPassColor = texture(tDiffuse, vUv);
-    //lastPassColor.rgb *= 1.-pow(1.-vUv.y, 2.0);
-    float m = pow(1.-vUv.y, 3.0)*scrollY;
-    //lastPassColor.rgb = mix(lastPassColor.rgb, vec3(0.), m);
-    vec4 shade = texture(shadetex, vUv*4.0).rgba*scrollY;
-    gl_FragColor = shade;
+    float m = 1.-pow(vUv.y, 1.);
+    vec3 mixedColor = mix(lastPassColor.rgb, shadeColor, m*scrollY);
+
+    gl_FragColor = vec4(mixedColor, lastPassColor.a);
   }
 `;
 

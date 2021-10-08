@@ -98,7 +98,7 @@ const fragment = `
     float d = step(r, 0.5);
     
     const int octaves = 2;
-    const vec2 td = vec2(.002,.998);
+    const vec2 td = vec2(.003,.997);
     const float tf = 0.02;
     const float tspeed = 10.;
     const float tStrength = 7000.;
@@ -149,12 +149,12 @@ const fragment = `
       a *= .75;
     }
 
-    return tline*tStrength;
+    return tline*tStrength*r;
   }
 
   vec3 getStormColor(vec2 uv, float s) {
     float tline = tshape(uv)*smoothstep(0.,1.,uv.y+.3);
-    tline *= pow(pow(1.-s, 8.), 2.0);
+    tline *= pow(pow(1.-s, 8.), 2.);
     return tline * tColor;
   } 
 
@@ -168,6 +168,7 @@ const fragment = `
     vec3 color = clouds(muv, s);
     color += getRainColor(uv, s);
     color += getStormColor(uv, s);
+    color *= 1.-pow(uv.y-.65, 2.0);
     pc_FragColor = vec4(color, 1.);
   }
 `;

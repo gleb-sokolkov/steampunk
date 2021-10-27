@@ -1,9 +1,7 @@
 const vertex = `
-  out vec2 vUv;
   void main()
   {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    vUv = uv;
   }
 `;
 const fragment = `
@@ -164,7 +162,7 @@ const fragment = `
     vec2 uv = gl_FragCoord.xy / resolution.y;
     vec2 muv = (gl_FragCoord.xy - resolution * .5) / resolution.y;
     uv.y -= .35*scrollY;
-    float s = texture(noise, vUv).r;
+    float s = texture(noise, gl_FragCoord.xy / resolution).r;
     vec3 color = clouds(muv, s);
     color += getRainColor(uv, s);
     color += getStormColor(uv, s);

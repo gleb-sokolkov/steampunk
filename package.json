@@ -24,6 +24,7 @@
   "homepage": "https://github.com/gleb-sokolkov/tasks.git#readme",
   "dependencies": {
     "express": "^4.17.1",
+    "postprocessing": "^6.23.1",
     "regenerator-runtime": "^0.13.9",
     "three": "^0.132.2"
   },

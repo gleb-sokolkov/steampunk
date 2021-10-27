@@ -14,7 +14,7 @@ import {
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
 // shaders
-import { FilmShader } from 'three/examples/jsm/shaders/FilmShader';
+import film from './shaders/film';
 import * as noiseBG from './shaders/noiseBG';
 import * as rain from './shaders/rain';
 import * as shade from './shaders/shade';
@@ -231,6 +231,7 @@ async function init() {
     map: asTexture,
     transparent: true,
     fog: true,
+    alphaTest: 0.01, // Alpha test for some reason skips png images with zero-alpha background
   }));
   airship1 = airship.clone();
   airship1.scale.set(asTexture.image.width * 0.25, asTexture.image.height * 0.25, 1);
@@ -241,7 +242,7 @@ async function init() {
   const airship2 = airship.clone();
   airship2.scale.set(asTexture.image.width * 0.25, asTexture.image.height * 0.25, 1);
   airship2.position.x = -200;
-  airship2.position.y = -100;
+  airship2.position.y = -300;
   airship2.position.z = -500;
 
   const scale = 0.25;
@@ -260,17 +261,16 @@ async function init() {
   });
 
   const effectPass = new EffectPass(main_camera, dofEffect);
-
   const filmShader = new ShaderMaterial({
     uniforms: {
-      ...FilmShader.uniforms,
+      ...film.uniforms,
       ...updatableU,
       nIntensity: { value: 0.05 },
       sIntensity: { value: 0.0 },
       grayscale: { value: false },
     },
-    fragmentShader: FilmShader.fragmentShader,
-    vertexShader: FilmShader.vertexShader,
+    fragmentShader: film.fragmentShader,
+    vertexShader: film.vertexShader,
   });
   const filmPass = new ShaderPass(filmShader, 'tDiffuse');
 

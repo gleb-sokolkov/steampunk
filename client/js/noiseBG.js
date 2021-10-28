@@ -1,3 +1,4 @@
+/* eslint-disable no-mixed-operators */
 /* eslint-disable import/no-unresolved */
 /* eslint-disable global-require */
 /* eslint-disable no-plusplus */
@@ -7,6 +8,10 @@ import {
   Clock, FloatType, GLSL3, Mesh, NearestFilter, OrthographicCamera, PerspectiveCamera,
   PlaneGeometry, RepeatWrapping, RGBAFormat, Scene, ShaderMaterial, Sprite, SpriteMaterial,
   TextureLoader, Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
+  InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute, InstancedMesh, BoxGeometry,
+  RawShaderMaterial,
+  BufferGeometry,
+  MeshBasicMaterial,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
@@ -18,6 +23,7 @@ import film from './shaders/film';
 import * as noiseBG from './shaders/noiseBG';
 import * as rain from './shaders/rain';
 import * as shade from './shaders/shade';
+import airships from './shaders/airships';
 
 // image import example
 // import testTexture from '../images/test_.jpg';
@@ -28,8 +34,8 @@ const loader = new TextureLoader();
 const planes = new Vector2(0.1, 1000);
 const fov = 75;
 const dofProps = {
-  focusDistance: 0.5,
-  focalLength: 0.1,
+  focusDistance: 0.1,
+  focalLength: 0.5,
   bokehScale: {
     d: 2.5,
     min: 0.0,
@@ -84,6 +90,7 @@ let noiseQuad; let finalQuad;
 
 let airship1;
 
+// --------------------------------------------------------------------------------- Utils
 function getFullScreenCorners() {
   return [
     -window.innerWidth * 0.5,
@@ -92,6 +99,13 @@ function getFullScreenCorners() {
     -window.innerHeight * 0.5,
   ];
 }
+
+function getVisiblePlane(z) {
+  const h = z * Math.tan(main_camera.fov * 0.5 * Math.PI / 180);
+  const w = h * main_camera.aspect;
+  return { w, h };
+}
+// --------------------------------------------------------------------------------- Utils
 
 function onWindowResize() {
   [
@@ -125,7 +139,7 @@ function onWindowScroll() {
   const ws = window.scrollY;
   const val = ws / (mh - wh + 0.1);
   updatableU.scrollY.value = val;
-  airship1.position.y = 400 + 100 * val;
+  // airship1.position.y = 400 + 100 * val;
 }
 
 async function setupTexture(
@@ -137,6 +151,76 @@ async function setupTexture(
   [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
   [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
   return texture;
+}
+
+async function airshipParticles(texturePath) {
+  const geometry = new InstancedBufferGeometry();
+
+  const positions = new BufferAttribute(new Float32Array(4 * 3), 3);
+  positions.setXYZ(0, -0.5, 0.5, 0.0);
+  positions.setXYZ(1, 0.5, 0.5, 0.0);
+  positions.setXYZ(2, -0.5, -0.5, 0.0);
+  positions.setXYZ(3, 0.5, -0.5, 0.0);
+  geometry.setAttribute('position', positions);
+
+  const uvs = new BufferAttribute(new Float32Array(4 * 2), 2);
+  uvs.setXY(0, 0.0, 0.0);
+  uvs.setXY(1, 1.0, 0.0);
+  uvs.setXY(2, 0.0, 1.0);
+  uvs.setXY(3, 1.0, 1.0);
+  geometry.setAttribute('uv', uvs);
+
+  geometry.setIndex(new BufferAttribute(new Uint16Array([0, 2, 1, 2, 3, 1]), 1));
+
+  const count = 10;
+  const nearOffset = 150;
+  const farOffset = 700;
+  const offsetMult = new Vector2(1.0, 0.9);
+  const speedRange = new Vector2(1.0, 3.0);
+  const texture = await setupTexture(texturePath, RepeatWrapping, RepeatWrapping);
+  const imgAspect = texture.image.width / texture.image.height;
+
+  const scale = Array(4).fill(null).reduce((acc) => {
+    acc.push(20.0 * imgAspect, 20.0);
+    return acc;
+  }, []);
+  geometry.setAttribute('scale', new BufferAttribute(new Float32Array(scale), 2));
+
+  // s - scale v - velocity
+  const offsetWithVel = new InstancedBufferAttribute(new Float32Array(count * 4), 4, false);
+  const sv = new InstancedBufferAttribute(new Float32Array(count * 3), 3, false);
+  for (let i = 0; i < count; i++) {
+    const randomVector = new Vector3();
+    randomVector.z = Math.random() * (planes.y - nearOffset - farOffset);
+    const zPlane = getVisiblePlane(nearOffset + randomVector.z);
+    zPlane.w *= 2.0;
+    zPlane.h *= 2.0;
+    randomVector.x = (Math.random() - 0.5) * zPlane.w * offsetMult.x;
+    randomVector.y = (Math.random() - 0.5) * zPlane.h * offsetMult.y;
+
+    const direction = Math.sign(Math.random() - 0.5);
+    const velocity = Math.random() * (speedRange.y - speedRange.x) + speedRange.x;
+    // randomVector.x += zPlane.w * 1.5 * direction;
+
+    offsetWithVel.array[i * 4 + 0] = randomVector.x;
+    offsetWithVel.array[i * 4 + 1] = randomVector.y;
+    offsetWithVel.array[i * 4 + 2] = -randomVector.z - nearOffset;
+    offsetWithVel.array[i * 4 + 3] = velocity * direction;
+  }
+
+  geometry.setAttribute('offsetVel', offsetWithVel);
+  const material = new ShaderMaterial({
+    uniforms: {
+      ...airships.uniforms,
+      tex: { value: texture },
+    },
+    vertexShader: airships.vertexShader,
+    fragmentShader: airships.fragmentShader,
+    transparent: true,
+    depthTest: false,
+  });
+  const mesh = new InstancedMesh(geometry, material, count);
+  postScene.add(mesh);
 }
 
 function animate() {
@@ -220,35 +304,14 @@ async function init() {
     fragmentShader: rain.fragment,
     glslVersion: GLSL3,
   });
-  const h = planes.y * Math.tan((main_camera.fov * 0.5 * Math.PI) / 180);
-  const w = h * main_camera.aspect;
-  finalQuad = new Mesh(new PlaneGeometry(h, w), finalQuadMaterial);
+
+  const plane = getVisiblePlane(planes.y);
+
+  finalQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), finalQuadMaterial);
   finalQuad.position.z = -planes.y;
   postScene.add(finalQuad);
 
-  const asTexture = await setupTexture(airshipTexture, RepeatWrapping, RepeatWrapping);
-  const airship = new Sprite(new SpriteMaterial({
-    map: asTexture,
-    transparent: true,
-    fog: true,
-    alphaTest: 0.01, // Alpha test for some reason skips png images with zero-alpha background
-  }));
-  airship1 = airship.clone();
-  airship1.scale.set(asTexture.image.width * 0.25, asTexture.image.height * 0.25, 1);
-  airship1.position.x = 200;
-  airship1.position.y = 400;
-  airship1.position.z = -800;
-
-  const airship2 = airship.clone();
-  airship2.scale.set(asTexture.image.width * 0.25, asTexture.image.height * 0.25, 1);
-  airship2.position.x = -200;
-  airship2.position.y = -300;
-  airship2.position.z = -500;
-
-  const scale = 0.25;
-  airship.scale.set(asTexture.image.width * scale, asTexture.image.height * scale, 1);
-  airship.position.z = -500;
-  postScene.add(airship, airship1, airship2);
+  airshipParticles(airshipTexture);
   // --------------------------------------------------------------------------------- Post render
 
   composer = new EffectComposer(renderer);

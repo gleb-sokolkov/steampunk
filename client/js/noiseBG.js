@@ -139,7 +139,6 @@ function onWindowScroll() {
   const ws = window.scrollY;
   const val = ws / (mh - wh + 0.1);
   updatableU.scrollY.value = val;
-  // airship1.position.y = 400 + 100 * val;
 }
 
 async function setupTexture(
@@ -172,11 +171,11 @@ async function airshipParticles(texturePath) {
 
   geometry.setIndex(new BufferAttribute(new Uint16Array([0, 2, 1, 2, 3, 1]), 1));
 
-  const count = 10;
-  const nearOffset = 150;
-  const farOffset = 700;
-  const offsetMult = new Vector2(1.0, 0.9);
-  const speedRange = new Vector2(1.0, 3.0);
+  const count = 100;
+  const nearOffset = 100;
+  const farOffset = 500;
+  const offsetMult = new Vector2(1.0, 0.7);
+  const speedRange = new Vector2(5.0, 50.0);
   const texture = await setupTexture(texturePath, RepeatWrapping, RepeatWrapping);
   const imgAspect = texture.image.width / texture.image.height;
 
@@ -186,9 +185,7 @@ async function airshipParticles(texturePath) {
   }, []);
   geometry.setAttribute('scale', new BufferAttribute(new Float32Array(scale), 2));
 
-  // s - scale v - velocity
   const offsetWithVel = new InstancedBufferAttribute(new Float32Array(count * 4), 4, false);
-  const sv = new InstancedBufferAttribute(new Float32Array(count * 3), 3, false);
   for (let i = 0; i < count; i++) {
     const randomVector = new Vector3();
     randomVector.z = Math.random() * (planes.y - nearOffset - farOffset);
@@ -200,18 +197,19 @@ async function airshipParticles(texturePath) {
 
     const direction = Math.sign(Math.random() - 0.5);
     const velocity = Math.random() * (speedRange.y - speedRange.x) + speedRange.x;
-    // randomVector.x += zPlane.w * 1.5 * direction;
+    randomVector.x += zPlane.w * 1.5 * direction;
 
     offsetWithVel.array[i * 4 + 0] = randomVector.x;
     offsetWithVel.array[i * 4 + 1] = randomVector.y;
     offsetWithVel.array[i * 4 + 2] = -randomVector.z - nearOffset;
-    offsetWithVel.array[i * 4 + 3] = velocity * direction;
+    offsetWithVel.array[i * 4 + 3] = velocity;
   }
 
   geometry.setAttribute('offsetVel', offsetWithVel);
   const material = new ShaderMaterial({
     uniforms: {
       ...airships.uniforms,
+      ...updatableU,
       tex: { value: texture },
     },
     vertexShader: airships.vertexShader,

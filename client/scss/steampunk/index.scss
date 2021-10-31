@@ -13,9 +13,11 @@ html, body {
 .test {
   display: block;
   width: 50%;
-  height: 2000px;
+  height: 1000px;
   margin: 0 auto;
   opacity: 0;
+  background-color: black;
+  margin-bottom: 3rem;
 
   &_theme_red {
     background-color: salmon;

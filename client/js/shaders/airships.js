@@ -29,9 +29,7 @@ const airships = {
       vec2 rs = getDistFunc(time * offsetVel.w, offsetVel.x);
       newPos.x += rs.x;
 
-      newPos.y += scrollY * 100.0;
-
-      vUv = vec2(mix(1.-uv.x, uv.x, rs.y*.5+.5), 1.-uv.y);
+      vUv = vec2(mix(1.-uv.x, uv.x, rs.y*.5+.5), uv.y);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0); 
     }`,
   fragmentShader: `
@@ -41,6 +39,7 @@ const airships = {
     void main() 
     {
       vec4 color = texture(tex, vUv);
+      if (color.a <= 0.0) discard;
       gl_FragColor = color;
     }`,
 };

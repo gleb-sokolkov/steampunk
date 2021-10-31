@@ -1,3 +1,4 @@
+/* eslint-disable space-infix-ops */
 /* eslint-disable no-mixed-operators */
 /* eslint-disable import/no-unresolved */
 /* eslint-disable global-require */
@@ -9,9 +10,7 @@ import {
   PlaneGeometry, RepeatWrapping, RGBAFormat, Scene, ShaderMaterial, Sprite, SpriteMaterial,
   TextureLoader, Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
   InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute, InstancedMesh, BoxGeometry,
-  RawShaderMaterial,
-  BufferGeometry,
-  MeshBasicMaterial,
+  RawShaderMaterial, BufferGeometry, MeshBasicMaterial, ClampToEdgeWrapping, Group,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
@@ -19,23 +18,25 @@ import {
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
 // shaders
-import film from './shaders/film';
 import * as noiseBG from './shaders/noiseBG';
 import * as rain from './shaders/rain';
 import * as shade from './shaders/shade';
 import airships from './shaders/airships';
+import film from './shaders/film';
+import fog from './shaders/fog';
 
-// image import example
-// import testTexture from '../images/test_.jpg';
 import airshipTexture from '../images/airship1_.png';
+import fogTexture from '../images/fog_.png';
+import cargoCraneTexture from '../images/cargo_crane_.png';
 
 const clock = new Clock();
 const loader = new TextureLoader();
 const planes = new Vector2(0.1, 1000);
 const fov = 75;
+const cameraMaxScrollY = -1000;
 const dofProps = {
-  focusDistance: 0.1,
-  focalLength: 0.5,
+  focusDistance: 0.3,
+  focalLength: 0.05,
   bokehScale: {
     d: 2.5,
     min: 0.0,
@@ -87,8 +88,7 @@ let preScene; let postScene;
 let bg_camera; let main_camera;
 let renderTarget; let renderer; let composer;
 let noiseQuad; let finalQuad;
-
-let airship1;
+let bottomSprites;
 
 // --------------------------------------------------------------------------------- Utils
 function getFullScreenCorners() {
@@ -104,6 +104,23 @@ function getVisiblePlane(z) {
   const h = z * Math.tan(main_camera.fov * 0.5 * Math.PI / 180);
   const w = h * main_camera.aspect;
   return { w, h };
+}
+
+function getRandomRange(vec) {
+  return Math.random() * (vec.y - vec.x) + vec.x;
+}
+
+async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
+  // eslint-disable-next-line no-use-before-define
+  const texture = await setupTexture(path, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
+  const geometry = new PlaneGeometry(texture.image.width, texture.image.height);
+  geometry.translate(pivot.x * texture.image.width, pivot.y * texture.image.height, 0);
+  const material = new MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+  });
+  const sprite = new Mesh(geometry, material);
+  return sprite;
 }
 // --------------------------------------------------------------------------------- Utils
 
@@ -139,20 +156,23 @@ function onWindowScroll() {
   const ws = window.scrollY;
   const val = ws / (mh - wh + 0.1);
   updatableU.scrollY.value = val;
+  main_camera.position.y = val * cameraMaxScrollY;
 }
 
 async function setupTexture(
   path, wrapS, wrapT,
+  flipY = false,
   minFilter = NearestFilter,
   magFilter = NearestFilter,
 ) {
   const texture = await loader.loadAsync(path);
   [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
   [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
+  texture.flipY = flipY;
   return texture;
 }
 
-async function airshipParticles(texturePath) {
+function quadGeometry() {
   const geometry = new InstancedBufferGeometry();
 
   const positions = new BufferAttribute(new Float32Array(4 * 3), 3);
@@ -171,11 +191,56 @@ async function airshipParticles(texturePath) {
 
   geometry.setIndex(new BufferAttribute(new Uint16Array([0, 2, 1, 2, 3, 1]), 1));
 
+  return geometry;
+}
+
+async function fogParticles(texturePath) {
+  const geometry = quadGeometry();
+  const count = 20;
+  const angleRange = new Vector2(-Math.PI * 0.05, Math.PI * 0.05);
+  const speedRange = new Vector2(4.0, 8.0);
+  const aSpeedRange = new Vector2(0.0, 0.5);
+  const texture = await setupTexture(texturePath, ClampToEdgeWrapping, ClampToEdgeWrapping);
+  const texAspect = texture.image.width / texture.image.height;
+  const scaleRange = new Vector2(1.0, 5.0);
+  // x - angle, y - velocity, z - angular velocity w - life time
+  const movement = new InstancedBufferAttribute(new Float32Array(count * 3), 3);
+  const scale = new InstancedBufferAttribute(new Float32Array(count * 2), 2);
+  for (let i = 0; i < count; i++) {
+    const dir = Math.sign(Math.random() - 0.5);
+    movement.array[i * 3 + 0] = getRandomRange(angleRange);
+    movement.array[i * 3 + 1] = getRandomRange(speedRange);
+    movement.array[i * 3 + 2] = getRandomRange(aSpeedRange) * dir;
+
+    const randomScale = getRandomRange(scaleRange);
+    scale.array[i * 2 + 0] = randomScale * texAspect;
+    scale.array[i * 2 + 1] = randomScale;
+  }
+
+  geometry.setAttribute('movement', movement);
+  geometry.setAttribute('scale', scale);
+  const material = new ShaderMaterial({
+    uniforms: {
+      ...fog.uniforms,
+      ...updatableU,
+      dif: { value: texture },
+    },
+    vertexShader: fog.vertexShader,
+    fragmentShader: fog.fragmentShader,
+    transparent: true,
+    depthTest: true,
+  });
+  const mesh = new InstancedMesh(geometry, material, count);
+  return mesh;
+}
+
+async function airshipParticles(texturePath) {
+  const geometry = quadGeometry();
   const count = 100;
   const nearOffset = 100;
-  const farOffset = 500;
-  const offsetMult = new Vector2(1.0, 0.7);
-  const speedRange = new Vector2(5.0, 50.0);
+  const farOffset = 700;
+  const offsetMult = new Vector2(1.0, 2.0);
+  const speedRange = new Vector2(10.0, 75.0);
   const texture = await setupTexture(texturePath, RepeatWrapping, RepeatWrapping);
   const imgAspect = texture.image.width / texture.image.height;
 
@@ -196,7 +261,7 @@ async function airshipParticles(texturePath) {
     randomVector.y = (Math.random() - 0.5) * zPlane.h * offsetMult.y;
 
     const direction = Math.sign(Math.random() - 0.5);
-    const velocity = Math.random() * (speedRange.y - speedRange.x) + speedRange.x;
+    const velocity = getRandomRange(speedRange);
     randomVector.x += zPlane.w * 1.5 * direction;
 
     offsetWithVel.array[i * 4 + 0] = randomVector.x;
@@ -215,10 +280,10 @@ async function airshipParticles(texturePath) {
     vertexShader: airships.vertexShader,
     fragmentShader: airships.fragmentShader,
     transparent: true,
-    depthTest: false,
+    depthTest: true,
   });
   const mesh = new InstancedMesh(geometry, material, count);
-  postScene.add(mesh);
+  return mesh;
 }
 
 function animate() {
@@ -309,7 +374,21 @@ async function init() {
   finalQuad.position.z = -planes.y;
   postScene.add(finalQuad);
 
-  airshipParticles(airshipTexture);
+  const shipMesh = await airshipParticles(airshipTexture);
+  shipMesh.position.y = cameraMaxScrollY * 0.25;
+  const fogMesh = await fogParticles(fogTexture);
+  fogMesh.position.z = -50;
+  fogMesh.position.y = -100;
+  postScene.add(shipMesh, fogMesh);
+  // bottomSprites = new Group();
+  // bottomSprites.position.y = cameraMaxScrollY;
+
+  // const cargoCrane = await imageSizeSprite(cargoCraneTexture, new Vector2(0.0, 0.5));
+  // cargoCrane.position.z = -1000;
+  // cargoCrane.position.y = -getVisiblePlane(1000).h;
+
+  // bottomSprites.add(cargoCrane);
+  // postScene.add(bottomSprites);
   // --------------------------------------------------------------------------------- Post render
 
   composer = new EffectComposer(renderer);

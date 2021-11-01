@@ -25,10 +25,13 @@ import airships from './shaders/airships';
 import film from './shaders/film';
 import fog from './shaders/fog';
 
-import airshipTexture from '../images/airship1_.png';
+import airship1Texture from '../images/airship1_.png';
+import ballons1Texture from '../images/ballons1_.png';
+import ballons3Texture from '../images/ballons3_.png';
 import fogTexture from '../images/fog_.png';
 import cargoCraneTexture from '../images/cargo_crane_.png';
 
+// --------------------------------------------------------------------------------- Constants
 const clock = new Clock();
 const loader = new TextureLoader();
 const planes = new Vector2(0.1, 1000);
@@ -61,6 +64,16 @@ const filmProps = {
   },
 };
 
+const airshipOptions = {
+  count: 10,
+  nearOffset: 100,
+  farOffset: 700,
+  offsetMult: new Vector2(1.0, 2.0),
+  speedRange: new Vector2(10.0, 75.0),
+  size: 20.0,
+};
+// --------------------------------------------------------------------------------- Constants
+
 // --------------------------------------------------------------------------------- Uniforms
 const updatableU = {
   time: {
@@ -88,7 +101,6 @@ let preScene; let postScene;
 let bg_camera; let main_camera;
 let renderTarget; let renderer; let composer;
 let noiseQuad; let finalQuad;
-let bottomSprites;
 
 // --------------------------------------------------------------------------------- Utils
 function getFullScreenCorners() {
@@ -118,6 +130,7 @@ async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
   const material = new MeshBasicMaterial({
     map: texture,
     transparent: true,
+    alphaTest: 0.01,
   });
   const sprite = new Mesh(geometry, material);
   return sprite;
@@ -196,7 +209,7 @@ function quadGeometry() {
 
 async function fogParticles(texturePath) {
   const geometry = quadGeometry();
-  const count = 20;
+  const count = 10;
   const angleRange = new Vector2(-Math.PI * 0.05, Math.PI * 0.05);
   const speedRange = new Vector2(4.0, 8.0);
   const aSpeedRange = new Vector2(0.0, 0.5);
@@ -234,18 +247,16 @@ async function fogParticles(texturePath) {
   return mesh;
 }
 
-async function airshipParticles(texturePath) {
+async function airshipParticles(texturePath, options = airshipOptions) {
   const geometry = quadGeometry();
-  const count = 100;
-  const nearOffset = 100;
-  const farOffset = 700;
-  const offsetMult = new Vector2(1.0, 2.0);
-  const speedRange = new Vector2(10.0, 75.0);
+  const {
+    count, nearOffset, farOffset, offsetMult, speedRange, size,
+  } = options;
   const texture = await setupTexture(texturePath, RepeatWrapping, RepeatWrapping);
   const imgAspect = texture.image.width / texture.image.height;
 
   const scale = Array(4).fill(null).reduce((acc) => {
-    acc.push(20.0 * imgAspect, 20.0);
+    acc.push(size * imgAspect, size);
     return acc;
   }, []);
   geometry.setAttribute('scale', new BufferAttribute(new Float32Array(scale), 2));
@@ -372,23 +383,52 @@ async function init() {
 
   finalQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), finalQuadMaterial);
   finalQuad.position.z = -planes.y;
-  postScene.add(finalQuad);
 
-  const shipMesh = await airshipParticles(airshipTexture);
-  shipMesh.position.y = cameraMaxScrollY * 0.25;
-  const fogMesh = await fogParticles(fogTexture);
-  fogMesh.position.z = -50;
-  fogMesh.position.y = -100;
-  postScene.add(shipMesh, fogMesh);
-  // bottomSprites = new Group();
-  // bottomSprites.position.y = cameraMaxScrollY;
+  const shipGroup = new Group();
+  shipGroup.position.y = cameraMaxScrollY * 0.2;
+  const shipMesh1 = await airshipParticles(airship1Texture, {
+    count: 3,
+    farOffset: 0,
+    nearOffset: 500,
+    offsetMult: new Vector2(1.0, 1.0),
+    size: 300,
+    speedRange: new Vector2(25.0, 50.0),
+  });
+  const shipMesh2 = await airshipParticles(ballons3Texture, {
+    count: 10,
+    farOffset: 0,
+    nearOffset: 200,
+    offsetMult: new Vector2(1.0, 1.0),
+    size: 100,
+    speedRange: new Vector2(10.0, 30.0),
+  });
+  const shipMesh3 = await airshipParticles(ballons1Texture, {
+    count: 10,
+    farOffset: 600,
+    nearOffset: 100,
+    offsetMult: new Vector2(1.0, 1.0),
+    size: 50,
+    speedRange: new Vector2(10.0, 20.0),
+  });
+  shipGroup.add(shipMesh1, shipMesh2, shipMesh3);
+  // const fogMesh = await fogParticles(fogTexture);
+  // fogMesh.position.z = -50;
+  // fogMesh.position.y = -100;
+  // postScene.add(shipMesh, fogMesh);
 
-  // const cargoCrane = await imageSizeSprite(cargoCraneTexture, new Vector2(0.0, 0.5));
-  // cargoCrane.position.z = -1000;
-  // cargoCrane.position.y = -getVisiblePlane(1000).h;
+  const bottomSprites = new Group();
+  bottomSprites.position.y = cameraMaxScrollY;
 
-  // bottomSprites.add(cargoCrane);
-  // postScene.add(bottomSprites);
+  const ccDepth = 500;
+  const ccPlane = getVisiblePlane(ccDepth);
+  const cargoCrane = await imageSizeSprite(cargoCraneTexture, new Vector2(-0.5, 0.5));
+  cargoCrane.position.x = ccPlane.w;
+  cargoCrane.position.y = -ccPlane.h;
+  cargoCrane.position.z = -ccDepth;
+
+  bottomSprites.add(cargoCrane);
+
+  postScene.add(finalQuad, bottomSprites, shipGroup);
   // --------------------------------------------------------------------------------- Post render
 
   composer = new EffectComposer(renderer);

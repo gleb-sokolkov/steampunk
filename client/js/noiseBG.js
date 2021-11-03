@@ -1,3 +1,4 @@
+/* eslint-disable no-use-before-define */
 /* eslint-disable space-infix-ops */
 /* eslint-disable no-mixed-operators */
 /* eslint-disable import/no-unresolved */
@@ -16,6 +17,7 @@ import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
   EffectComposer, RenderPass, EffectPass, DepthOfFieldEffect, ShaderPass,
 } from 'postprocessing';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
 // shaders
 import * as noiseBG from './shaders/noiseBG';
@@ -30,6 +32,7 @@ import ballons1Texture from '../images/ballons1_.png';
 import ballons3Texture from '../images/ballons3_.png';
 import fogTexture from '../images/fog_.png';
 import cargoCraneTexture from '../images/cargo_crane_.png';
+import exhaust1Texture from '../images/exhaust1_.png';
 
 // --------------------------------------------------------------------------------- Constants
 const clock = new Clock();
@@ -72,6 +75,16 @@ const airshipOptions = {
   speedRange: new Vector2(10.0, 75.0),
   size: 20.0,
 };
+const getVisiblePlane = (() => {
+  const data = {};
+  return (z) => {
+    if (data[z]) return data[z];
+    const h = z * Math.tan(main_camera.fov * 0.5 * Math.PI / 180);
+    const w = h * main_camera.aspect;
+    data[z] = { w, h };
+    return data[z];
+  };
+})();
 // --------------------------------------------------------------------------------- Constants
 
 // --------------------------------------------------------------------------------- Uniforms
@@ -110,12 +123,6 @@ function getFullScreenCorners() {
     window.innerHeight * 0.5,
     -window.innerHeight * 0.5,
   ];
-}
-
-function getVisiblePlane(z) {
-  const h = z * Math.tan(main_camera.fov * 0.5 * Math.PI / 180);
-  const w = h * main_camera.aspect;
-  return { w, h };
 }
 
 function getRandomRange(vec) {
@@ -209,13 +216,13 @@ function quadGeometry() {
 
 async function fogParticles(texturePath) {
   const geometry = quadGeometry();
-  const count = 10;
+  const count = 20;
   const angleRange = new Vector2(-Math.PI * 0.05, Math.PI * 0.05);
-  const speedRange = new Vector2(4.0, 8.0);
+  const speedRange = new Vector2(10.0, 40.0);
   const aSpeedRange = new Vector2(0.0, 0.5);
   const texture = await setupTexture(texturePath, ClampToEdgeWrapping, ClampToEdgeWrapping);
   const texAspect = texture.image.width / texture.image.height;
-  const scaleRange = new Vector2(1.0, 5.0);
+  const scaleRange = new Vector2(5.0, 20.0);
   // x - angle, y - velocity, z - angular velocity w - life time
   const movement = new InstancedBufferAttribute(new Float32Array(count * 3), 3);
   const scale = new InstancedBufferAttribute(new Float32Array(count * 2), 2);
@@ -252,7 +259,7 @@ async function airshipParticles(texturePath, options = airshipOptions) {
   const {
     count, nearOffset, farOffset, offsetMult, speedRange, size,
   } = options;
-  const texture = await setupTexture(texturePath, RepeatWrapping, RepeatWrapping);
+  const texture = await setupTexture(texturePath, ClampToEdgeWrapping, ClampToEdgeWrapping);
   const imgAspect = texture.image.width / texture.image.height;
 
   const scale = Array(4).fill(null).reduce((acc) => {
@@ -275,7 +282,7 @@ async function airshipParticles(texturePath, options = airshipOptions) {
     const velocity = getRandomRange(speedRange);
     randomVector.x += zPlane.w * 1.5 * direction;
 
-    offsetWithVel.array[i * 4 + 0] = randomVector.x;
+    offsetWithVel.array[i * 4 + 0] = randomVector.x + size * Math.sign(randomVector.x);
     offsetWithVel.array[i * 4 + 1] = randomVector.y;
     offsetWithVel.array[i * 4 + 2] = -randomVector.z - nearOffset;
     offsetWithVel.array[i * 4 + 3] = velocity;
@@ -316,7 +323,7 @@ async function init() {
 
   renderer = new WebGLRenderer({
     canvas: document.getElementById('noiseBG'),
-    antialias: true,
+    antialias: false,
   });
 
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -411,24 +418,33 @@ async function init() {
     speedRange: new Vector2(10.0, 20.0),
   });
   shipGroup.add(shipMesh1, shipMesh2, shipMesh3);
-  // const fogMesh = await fogParticles(fogTexture);
-  // fogMesh.position.z = -50;
-  // fogMesh.position.y = -100;
-  // postScene.add(shipMesh, fogMesh);
 
   const bottomSprites = new Group();
   bottomSprites.position.y = cameraMaxScrollY;
 
-  const ccDepth = 500;
+  const ccDepth = 200;
   const ccPlane = getVisiblePlane(ccDepth);
   const cargoCrane = await imageSizeSprite(cargoCraneTexture, new Vector2(-0.5, 0.5));
+  cargoCrane.scale.multiplyScalar(0.3);
   cargoCrane.position.x = ccPlane.w;
   cargoCrane.position.y = -ccPlane.h;
   cargoCrane.position.z = -ccDepth;
 
-  bottomSprites.add(cargoCrane);
+  const exh1Depth = 1000;
+  const exh1Plane = getVisiblePlane(exh1Depth);
+  const exh1 = await imageSizeSprite(exhaust1Texture, new Vector2(0.0, 0.5));
+  exh1.position.x = -200;
+  exh1.position.y = -exh1Plane.h;
+  exh1.position.z = -exh1Depth;
 
-  postScene.add(finalQuad, bottomSprites, shipGroup);
+  const fogMesh = await fogParticles(fogTexture);
+  fogMesh.position.x = -200;
+  fogMesh.position.y = -1050;
+  fogMesh.position.z = -1000;
+
+  bottomSprites.add(cargoCrane, exh1);
+
+  postScene.add(finalQuad, bottomSprites, shipGroup, fogMesh);
   // --------------------------------------------------------------------------------- Post render
 
   composer = new EffectComposer(renderer);
@@ -439,8 +455,8 @@ async function init() {
     focalLength: dofProps.focalLength,
     bokehScale: dofProps.bokehScale.d,
   });
-
   const effectPass = new EffectPass(main_camera, dofEffect);
+
   const filmShader = new ShaderMaterial({
     uniforms: {
       ...film.uniforms,
@@ -453,9 +469,13 @@ async function init() {
     vertexShader: film.vertexShader,
   });
   const filmPass = new ShaderPass(filmShader, 'tDiffuse');
+  const fxaaShader = new ShaderMaterial(FXAAShader);
+
+  const fxaaPass = new ShaderPass(fxaaShader, 'tDiffuse');
 
   composer.addPass(renderPass);
   composer.addPass(effectPass);
+  composer.addPass(fxaaPass);
   composer.addPass(filmPass);
 
   // why it isn't possible to do in the constructor?

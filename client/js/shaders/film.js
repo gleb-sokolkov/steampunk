@@ -23,11 +23,6 @@ const film = {
 
   uniforms: {
     tDiffuse: { value: null },
-    time: { value: 0.0 },
-    nIntensity: { value: 0.5 },
-    sIntensity: { value: 0.05 },
-    sCount: { value: 4096 },
-    grayscale: { value: 1 },
   },
 
   vertexShader: /* glsl */`
@@ -45,20 +40,11 @@ const film = {
 
 		#include <common>
 
-		// control parameter
 		uniform float time;
-
 		uniform bool grayscale;
-
-		// noise effect intensity value (0 = no effect, 1 = full effect)
 		uniform float nIntensity;
-
-		// scanlines effect intensity value (0 = no effect, 1 = full effect)
 		uniform float sIntensity;
-
-		// scanlines effect count value (0 = no effect, 4096 = full effect)
 		uniform float sCount;
-
 		uniform sampler2D tDiffuse;
 
 		varying vec2 vUv;

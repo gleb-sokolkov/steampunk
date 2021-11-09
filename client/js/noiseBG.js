@@ -7,24 +7,24 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-unused-vars */
 import {
-  Clock, FloatType, GLSL3, Mesh, NearestFilter, OrthographicCamera, PerspectiveCamera,
-  PlaneGeometry, RepeatWrapping, RGBAFormat, Scene, ShaderMaterial, Sprite, SpriteMaterial,
-  TextureLoader, Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
-  InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute, InstancedMesh, BoxGeometry,
-  RawShaderMaterial, BufferGeometry, MeshBasicMaterial, ClampToEdgeWrapping, Group,
+  Clock, FloatType, GLSL3, Mesh, NearestFilter, PerspectiveCamera,
+  PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, TextureLoader,
+  Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
+  InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute,
+  InstancedMesh, MeshBasicMaterial, ClampToEdgeWrapping, Group,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
-  EffectComposer, RenderPass, EffectPass, DepthOfFieldEffect, ShaderPass,
+  EffectComposer, RenderPass, EffectPass, DepthOfFieldEffect,
+  SMAAEffect,
 } from 'postprocessing';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
+import { FilmEffect } from './effects';
 // shaders
 import * as noiseBG from './shaders/noiseBG';
-import * as rain from './shaders/rain';
-import * as shade from './shaders/shade';
+import rainShader from './shaders/rain';
 import airships from './shaders/airships';
-import film from './shaders/film';
 import fog from './shaders/fog';
 
 import airship1Texture from '../images/airship1_.png';
@@ -110,23 +110,28 @@ const defaultU = {
 };
 // --------------------------------------------------------------------------------- Uniforms
 
+// --------------------------------------------------------------------------------- Render elements
 let preScene; let postScene;
-let bg_camera; let main_camera;
+let main_camera;
 let renderTarget; let renderer; let composer;
 let noiseQuad; let finalQuad;
+// --------------------------------------------------------------------------------- Render elements
 
 // --------------------------------------------------------------------------------- Utils
-function getFullScreenCorners() {
-  return [
-    -window.innerWidth * 0.5,
-    window.innerWidth * 0.5,
-    window.innerHeight * 0.5,
-    -window.innerHeight * 0.5,
-  ];
-}
-
 function getRandomRange(vec) {
   return Math.random() * (vec.y - vec.x) + vec.x;
+}
+
+function transpose(a) {
+  return a[0].map((_, c) => a.map((r) => r[c]));
+}
+
+function getRandomSet(size, count) {
+  if (size * count > 0) return null;
+
+  const calc = () => new Array(size).fill(0).map(Math.random);
+
+  return transpose(new Array(count).fill(0).map(calc));
 }
 
 async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
@@ -145,14 +150,6 @@ async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
 // --------------------------------------------------------------------------------- Utils
 
 function onWindowResize() {
-  [
-    bg_camera.left,
-    bg_camera.right,
-    bg_camera.top,
-    bg_camera.bottom,
-  ] = getFullScreenCorners();
-  bg_camera.updateProjectionMatrix();
-
   main_camera.aspect = window.innerWidth / window.innerHeight;
   main_camera.updateProjectionMatrix();
 
@@ -190,6 +187,23 @@ async function setupTexture(
   [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
   texture.flipY = flipY;
   return texture;
+}
+
+async function genAreaSearchImages() {
+  const areaImage = new Image();
+  areaImage.src = SMAAEffect.areaImageDataURL;
+  await new Promise((resolve, reject) => {
+    areaImage.onload = () => resolve();
+    areaImage.onerror = () => reject();
+  });
+
+  const searchImage = new Image();
+  searchImage.src = SMAAEffect.searchImageDataURL;
+  await new Promise((resolve, reject) => {
+    searchImage.onload = () => resolve();
+    searchImage.onerror = () => reject();
+  });
+  return [searchImage, areaImage];
 }
 
 function quadGeometry() {
@@ -306,7 +320,7 @@ async function airshipParticles(texturePath, options = airshipOptions) {
 
 function animate() {
   renderer.setRenderTarget(renderTarget);
-  renderer.render(preScene, bg_camera);
+  renderer.render(preScene, main_camera);
   renderer.setRenderTarget(null);
   composer.render();
 
@@ -347,16 +361,14 @@ async function init() {
   renderTarget.texture[0].name = 'noise';
 
   preScene = new Scene();
-  bg_camera = new OrthographicCamera(
-    ...getFullScreenCorners(),
-    ...planes.toArray(),
-  );
+  postScene = new Scene();
 
   main_camera = new PerspectiveCamera(
     fov,
     window.innerWidth / window.innerHeight,
     ...planes.toArray(),
   );
+  const plane = getVisiblePlane(planes.y);
 
   // --------------------------------------------------------------------------------- Pre render
   const noiseQuadMaterial = new ShaderMaterial({
@@ -365,15 +377,15 @@ async function init() {
     fragmentShader: noiseBG.fragment,
     glslVersion: GLSL3,
   });
-  noiseQuad = new Mesh(new PlaneGeometry(1, 1), noiseQuadMaterial);
-  noiseQuad.position.z = -2;
+  noiseQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), noiseQuadMaterial);
+  noiseQuad.position.z = -planes.y;
   preScene.add(noiseQuad);
   // --------------------------------------------------------------------------------- Pre render
 
   // --------------------------------------------------------------------------------- Post render
-  postScene = new Scene();
   const finalQuadMaterial = new ShaderMaterial({
     uniforms: {
+      ...rainShader.uniforms,
       time: updatableU.time,
       resolution: updatableU.resolution,
       scrollY: updatableU.scrollY,
@@ -381,12 +393,10 @@ async function init() {
         value: renderTarget.texture[0],
       },
     },
-    vertexShader: rain.vertex,
-    fragmentShader: rain.fragment,
+    vertexShader: rainShader.vertexShader,
+    fragmentShader: rainShader.fragmentShader,
     glslVersion: GLSL3,
   });
-
-  const plane = getVisiblePlane(planes.y);
 
   finalQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), finalQuadMaterial);
   finalQuad.position.z = -planes.y;
@@ -447,6 +457,7 @@ async function init() {
   postScene.add(finalQuad, bottomSprites, shipGroup, fogMesh);
   // --------------------------------------------------------------------------------- Post render
 
+  // --------------------------------------------------------------------------------- Composer
   composer = new EffectComposer(renderer);
   const renderPass = new RenderPass(postScene, main_camera);
 
@@ -455,28 +466,21 @@ async function init() {
     focalLength: dofProps.focalLength,
     bokehScale: dofProps.bokehScale.d,
   });
-  const effectPass = new EffectPass(main_camera, dofEffect);
 
-  const filmShader = new ShaderMaterial({
-    uniforms: {
-      ...film.uniforms,
-      ...updatableU,
-      nIntensity: { value: 0.05 },
-      sIntensity: { value: 0.0 },
-      grayscale: { value: false },
-    },
-    fragmentShader: film.fragmentShader,
-    vertexShader: film.vertexShader,
-  });
-  const filmPass = new ShaderPass(filmShader, 'tDiffuse');
-  const fxaaShader = new ShaderMaterial(FXAAShader);
+  const filmEffect = new FilmEffect(Object.entries({
+    ...updatableU,
+    nIntensity: { value: filmProps.nIntensity.d },
+    sIntensity: { value: filmProps.sIntensity.d },
+    sCount: { value: filmProps.sCount.d },
+    grayscale: { value: false },
+  }));
 
-  const fxaaPass = new ShaderPass(fxaaShader, 'tDiffuse');
+  const smaaEffect = new SMAAEffect(...await genAreaSearchImages());
 
+  const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
   composer.addPass(renderPass);
   composer.addPass(effectPass);
-  composer.addPass(fxaaPass);
-  composer.addPass(filmPass);
+  // --------------------------------------------------------------------------------- Composer
 
   // why it isn't possible to do in the constructor?
   // shadePass.uniforms.shadetex.value = await setupTexture(
@@ -501,10 +505,10 @@ async function init() {
   const gui = new GUI();
 
   const filmFolder = gui.addFolder('FilmPass');
-  filmFolder.add(filmShader.uniforms.grayscale, 'value').name('grayscale');
-  filmFolder.add(filmShader.uniforms.nIntensity, 'value', filmProps.nIntensity.min, filmProps.nIntensity.max).name('noise intensity');
-  filmFolder.add(filmShader.uniforms.sIntensity, 'value', filmProps.sIntensity.min, filmProps.sIntensity.max).name('scanline intensity');
-  filmFolder.add(filmShader.uniforms.sCount, 'value', filmProps.sCount.min, filmProps.sCount.max).name('scanline count');
+  filmFolder.add(filmEffect.uniforms.get('grayscale'), 'value').name('grayscale');
+  filmFolder.add(filmEffect.uniforms.get('nIntensity'), 'value', filmProps.nIntensity.min, filmProps.nIntensity.max).name('noise intensity');
+  filmFolder.add(filmEffect.uniforms.get('sIntensity'), 'value', filmProps.sIntensity.min, filmProps.sIntensity.max).name('scanline intensity');
+  filmFolder.add(filmEffect.uniforms.get('sCount'), 'value', filmProps.sCount.min, filmProps.sCount.max).name('scanline count');
 
   const dofFolder = gui.addFolder('DOFPass');
   dofFolder.add(dofEffect, 'bokehScale', dofProps.bokehScale.min, dofProps.bokehScale.max);

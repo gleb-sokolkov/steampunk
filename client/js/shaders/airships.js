@@ -33,14 +33,17 @@ const airships = {
       gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0); 
     }`,
   fragmentShader: `
+    layout(location = 0) out vec4 color;
+    layout(location = 1) out vec4 noise;
     uniform sampler2D tex;
     in vec2 vUv;
 
     void main() 
     {
-      vec4 color = texture(tex, vUv);
-      if (color.a <= 0.0) discard;
-      gl_FragColor = color;
+      vec4 col = texture(tex, vUv);
+      if (col.a <= 0.0) discard;
+      color = col;
+      noise = vec4(0.0);
     }`,
 };
 

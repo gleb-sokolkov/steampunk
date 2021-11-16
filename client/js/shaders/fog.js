@@ -36,6 +36,8 @@ const fog = {
     }
   `,
   fragmentShader: `
+    layout(location = 0) out vec4 color;
+    layout(location = 1) out vec4 noise;
     uniform sampler2D dif;
     uniform float baseOpaque;
 
@@ -46,7 +48,8 @@ const fog = {
     void main() {
       vec4 col = texture(dif, vUv) * fade;
       if (col.a <= 0.05) discard;
-      gl_FragColor = vec4(col.rgb, col.a*baseOpaque);
+      color = vec4(col.rgb, col.a*baseOpaque);
+      noise = vec4(0.0);
     }
   `,
 };

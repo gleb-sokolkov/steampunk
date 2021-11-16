@@ -4,17 +4,17 @@ import {
   Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
   InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute,
   InstancedMesh, MeshBasicMaterial, ClampToEdgeWrapping, Group,
+  DepthTexture, DepthFormat, UnsignedShortType, Sprite, SpriteMaterial,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
   EffectComposer, RenderPass, EffectPass, DepthOfFieldEffect,
-  SMAAEffect,
+  SMAAEffect, DepthEffect,
 } from 'postprocessing';
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
-import { FilmEffect } from './effects';
+import { FilmEffect, BGEffect } from './effects';
 // shaders
-import * as noiseBG from './shaders/noiseBG';
+import noiseBG from './shaders/noiseBG';
 import rainShader from './shaders/rain';
 import airships from './shaders/airships';
 import fog from './shaders/fog';
@@ -103,10 +103,11 @@ const defaultU = {
 // --------------------------------------------------------------------------------- Uniforms
 
 // --------------------------------------------------------------------------------- Render elements
-let preScene; let postScene;
+let preScene;
 let main_camera;
 let renderTarget; let renderer; let composer;
-let noiseQuad; let finalQuad;
+let noiseQuad;
+let bgEffect;
 // --------------------------------------------------------------------------------- Render elements
 
 // --------------------------------------------------------------------------------- Utils
@@ -127,7 +128,6 @@ function getRandomSet(size, count) {
 }
 
 async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
-  // eslint-disable-next-line no-use-before-define
   const texture = await setupTexture(path, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
   const geometry = new PlaneGeometry(texture.image.width, texture.image.height);
   geometry.translate(pivot.x * texture.image.width, pivot.y * texture.image.height, 0);
@@ -156,7 +156,6 @@ function onWindowResize() {
   updatableU.resolution.value = new Vector2(window.innerWidth, window.innerHeight);
 
   noiseQuad.scale.set(window.innerWidth, window.innerHeight);
-  finalQuad.scale.set(window.innerWidth, window.innerHeight);
 }
 
 function onWindowScroll() {
@@ -255,6 +254,7 @@ async function fogParticles(texturePath) {
     fragmentShader: fog.fragmentShader,
     transparent: true,
     depthTest: true,
+    glslVersion: GLSL3,
   });
   const mesh = new InstancedMesh(geometry, material, count);
   return mesh;
@@ -305,6 +305,7 @@ async function airshipParticles(texturePath, options = airshipOptions) {
     fragmentShader: airships.fragmentShader,
     transparent: true,
     depthTest: true,
+    glslVersion: GLSL3,
   });
   const mesh = new InstancedMesh(geometry, material, count);
   return mesh;
@@ -312,7 +313,10 @@ async function airshipParticles(texturePath, options = airshipOptions) {
 
 function animate() {
   renderer.setRenderTarget(renderTarget);
+  renderer.setClearColor(0xffffff, 1.0);
+  renderer.clear();
   renderer.render(preScene, main_camera);
+
   renderer.setRenderTarget(null);
   composer.render();
 
@@ -338,7 +342,7 @@ async function init() {
   renderTarget = new WebGLMultipleRenderTargets(
     window.innerWidth,
     window.innerHeight,
-    1,
+    2,
   );
 
   for (let i = 0; i < renderTarget.texture.length; i++) {
@@ -350,10 +354,15 @@ async function init() {
     renderTarget.texture[i].format = RGBAFormat;
     renderTarget.texture[i].type = FloatType;
   }
-  renderTarget.texture[0].name = 'noise';
+
+  renderTarget.depthTexture = new DepthTexture();
+  renderTarget.depthTexture.format = DepthFormat;
+  renderTarget.depthTexture.type = UnsignedShortType;
+
+  renderTarget.texture[0].name = 'color';
+  renderTarget.texture[1].name = 'noise';
 
   preScene = new Scene();
-  postScene = new Scene();
 
   main_camera = new PerspectiveCamera(
     fov,
@@ -363,35 +372,14 @@ async function init() {
   const plane = getVisiblePlane(planes.y);
 
   // --------------------------------------------------------------------------------- Pre render
-  const noiseQuadMaterial = new ShaderMaterial({
-    uniforms: defaultU,
-    vertexShader: noiseBG.vertex,
-    fragmentShader: noiseBG.fragment,
+  const noiseBGMaterial = new ShaderMaterial({
+    uniforms: { ...noiseBG.uniforms, ...updatableU },
+    vertexShader: noiseBG.vertexShader,
+    fragmentShader: noiseBG.fragmentShader,
     glslVersion: GLSL3,
   });
-  noiseQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), noiseQuadMaterial);
+  noiseQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), noiseBGMaterial);
   noiseQuad.position.z = -planes.y;
-  preScene.add(noiseQuad);
-  // --------------------------------------------------------------------------------- Pre render
-
-  // --------------------------------------------------------------------------------- Post render
-  const finalQuadMaterial = new ShaderMaterial({
-    uniforms: {
-      ...rainShader.uniforms,
-      time: updatableU.time,
-      resolution: updatableU.resolution,
-      scrollY: updatableU.scrollY,
-      noise: {
-        value: renderTarget.texture[0],
-      },
-    },
-    vertexShader: rainShader.vertexShader,
-    fragmentShader: rainShader.fragmentShader,
-    glslVersion: GLSL3,
-  });
-
-  finalQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), finalQuadMaterial);
-  finalQuad.position.z = -planes.y;
 
   const shipGroup = new Group();
   shipGroup.position.y = cameraMaxScrollY * 0.2;
@@ -442,16 +430,24 @@ async function init() {
   const fogMesh = await fogParticles(fogTexture);
   fogMesh.position.x = -200;
   fogMesh.position.y = -1050;
-  fogMesh.position.z = -1000;
+  fogMesh.position.z = -800;
 
   bottomSprites.add(cargoCrane, exh1);
 
-  postScene.add(finalQuad, bottomSprites, shipGroup, fogMesh);
-  // --------------------------------------------------------------------------------- Post render
+  preScene.add(noiseQuad, shipGroup, fogMesh);
+  // --------------------------------------------------------------------------------- Pre render
 
   // --------------------------------------------------------------------------------- Composer
-  composer = new EffectComposer(renderer);
-  const renderPass = new RenderPass(postScene, main_camera);
+  composer = new EffectComposer(renderer, { depthBuffer: false });
+
+  bgEffect = new BGEffect(Object.entries({
+    sceneTexture: { value: renderTarget.texture[0] },
+    depthTexture: { value: renderTarget.depthTexture },
+    noiseTexture: { value: renderTarget.texture[1] },
+    ...updatableU,
+    near: { value: planes.x },
+    far: { value: planes.y },
+  }));
 
   const dofEffect = new DepthOfFieldEffect(main_camera, {
     focusDistance: dofProps.focusDistance,
@@ -469,8 +465,9 @@ async function init() {
 
   const smaaEffect = new SMAAEffect(...await genAreaSearchImages());
 
+  const geometry = new EffectPass(main_camera, bgEffect);
   const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
-  composer.addPass(renderPass);
+  composer.addPass(geometry);
   composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 

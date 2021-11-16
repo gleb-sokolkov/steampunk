@@ -70,6 +70,19 @@
   ],
   "eslintConfig": {
     "extends": "airbnb-base",
+    "overrides": [
+    {
+      "files": ["noiseBG.js"],
+      "rules": {
+        "no-use-before-define": "off",
+        "space-infix-ops":"off",
+        "no-mixed-operators":"off",
+        "global-require":"off",
+        "no-plusplus":"off",
+        "camelcase":"off",
+        "no-unused-vars":"off"
+      }
+    }],
     "ignorePatterns": [
       "webpack.*.js",
       "/public/**/*.js",

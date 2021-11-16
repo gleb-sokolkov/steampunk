@@ -1,11 +1,3 @@
-/* eslint-disable no-use-before-define */
-/* eslint-disable space-infix-ops */
-/* eslint-disable no-mixed-operators */
-/* eslint-disable import/no-unresolved */
-/* eslint-disable global-require */
-/* eslint-disable no-plusplus */
-/* eslint-disable camelcase */
-/* eslint-disable no-unused-vars */
 import {
   Clock, FloatType, GLSL3, Mesh, NearestFilter, PerspectiveCamera,
   PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, TextureLoader,

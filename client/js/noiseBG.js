@@ -4,20 +4,20 @@ import {
   Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
   InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute,
   InstancedMesh, MeshBasicMaterial, ClampToEdgeWrapping, Group,
-  DepthTexture, DepthFormat, UnsignedShortType, Sprite, SpriteMaterial,
+  DepthTexture, DepthFormat, UnsignedShortType,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
-  EffectComposer, RenderPass, EffectPass, DepthOfFieldEffect,
-  SMAAEffect, DepthEffect,
+  EffectComposer, EffectPass, DepthOfFieldEffect,
+  SMAAEffect,
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
 import { FilmEffect, BGEffect } from './effects';
 // shaders
 import noiseBG from './shaders/noiseBG';
-import rainShader from './shaders/rain';
 import airships from './shaders/airships';
 import fog from './shaders/fog';
+import basic from './shaders/basic';
 
 import airship1Texture from '../images/airship1_.png';
 import ballons1Texture from '../images/ballons1_.png';
@@ -131,10 +131,12 @@ async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
   const texture = await setupTexture(path, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
   const geometry = new PlaneGeometry(texture.image.width, texture.image.height);
   geometry.translate(pivot.x * texture.image.width, pivot.y * texture.image.height, 0);
-  const material = new MeshBasicMaterial({
-    map: texture,
+  const material = new ShaderMaterial({
+    ...basic,
+    uniforms: { dif: { value: texture } },
     transparent: true,
-    alphaTest: 0.01,
+    depthTest: true,
+    glslVersion: GLSL3,
   });
   const sprite = new Mesh(geometry, material);
   return sprite;
@@ -420,7 +422,7 @@ async function init() {
   cargoCrane.position.y = -ccPlane.h;
   cargoCrane.position.z = -ccDepth;
 
-  const exh1Depth = 1000;
+  const exh1Depth = 800;
   const exh1Plane = getVisiblePlane(exh1Depth);
   const exh1 = await imageSizeSprite(exhaust1Texture, new Vector2(0.0, 0.5));
   exh1.position.x = -200;
@@ -429,12 +431,12 @@ async function init() {
 
   const fogMesh = await fogParticles(fogTexture);
   fogMesh.position.x = -200;
-  fogMesh.position.y = -1050;
+  fogMesh.position.y = -950;
   fogMesh.position.z = -800;
 
   bottomSprites.add(cargoCrane, exh1);
 
-  preScene.add(noiseQuad, shipGroup, fogMesh);
+  preScene.add(noiseQuad, shipGroup, fogMesh, bottomSprites);
   // --------------------------------------------------------------------------------- Pre render
 
   // --------------------------------------------------------------------------------- Composer

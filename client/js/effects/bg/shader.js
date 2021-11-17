@@ -88,14 +88,14 @@ export default `
     float baseSize = 6.0;     
     vec2 tuv = fract(uv*vec2(baseSize, 1.));
     vec2 tid = floor(uv*vec2(baseSize, 1.));
-    float r = random(tid.x);
+    float r = random(tid.x+2221.5203);
     float d = step(r, 0.5);
     
     const int octaves = 2;
     const vec2 td = vec2(.003,.997);
     const float tf = 0.02;
     const float tspeed = 10.;
-    const float tStrength = 7000.;
+    const float tStrength = 10000.;
 
     float tline = 0.;
     float a = 0.1;
@@ -109,7 +109,7 @@ export default `
       
       vec2 tuv2 = fract(uv*vec2(baseSize, 1.));
       vec2 tid2 = floor(uv*vec2(baseSize, 1.));
-      float r2 = random(tid2.x);
+      float r2 = random(tid2.x+153.6723);
       float rl = random(tid2.x+floor(time*2.0));
       float d2 = step(r2, .5);
 
@@ -146,10 +146,13 @@ export default `
     return tline*tStrength*r;
   }
 
-  vec3 getStormColor(vec2 uv, float s) {
+  vec3 getStormColor(vec2 uv, float s, float mask) {
+    if(mask <= 0.0001) {
+      return vec3(0.0);
+    }
     float tline = tshape(uv)*smoothstep(0.,1.,uv.y+.3);
     tline *= pow(pow(1.-s, 8.), 2.);
-    return tline * tColor;
+    return tline * tColor * mask;
   } 
   
   float linearDepth(float d)
@@ -167,9 +170,10 @@ export default `
     vec2 muv = (gl_FragCoord.xy - resolution * .5) / resolution.y;
     vec2 suv = vec2(uv.x, uv.y-.35*scrollY);
     float s = noise;
-    vec3 col = clouds(muv, s, step(color.a, depth));
+    float mask = step(color.a, depth);
+    vec3 col = clouds(muv, s, mask);
     col += getRainColor(suv, s);
-    col += getStormColor(suv, s);
+    col += getStormColor(suv, s, mask);
     col *= 1.-pow(suv.y-.65, 2.0);
     col = mix(col, color.rgb, color.a * (1.-ldepth*ldepth));
     outputColor = vec4(vec3(col), 1.0);

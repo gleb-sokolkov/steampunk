@@ -4,7 +4,7 @@ import {
   Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
   InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute,
   InstancedMesh, MeshBasicMaterial, ClampToEdgeWrapping, Group,
-  DepthTexture, DepthFormat, UnsignedShortType,
+  DepthTexture, DepthFormat, UnsignedShortType, CanvasTexture, UVMapping, LinearFilter,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
@@ -18,13 +18,15 @@ import noiseBG from './shaders/noiseBG';
 import airships from './shaders/airships';
 import fog from './shaders/fog';
 import basic from './shaders/basic';
-
+// images & textures
 import airship1Texture from '../images/airship1_.png';
 import ballons1Texture from '../images/ballons1_.png';
 import ballons3Texture from '../images/ballons3_.png';
 import fogTexture from '../images/fog_.png';
 import cargoCraneTexture from '../images/cargo_crane_.png';
 import exhaust1Texture from '../images/exhaust1_.png';
+
+import parseHTML from './parseHTML';
 
 // --------------------------------------------------------------------------------- Constants
 const clock = new Clock();
@@ -127,8 +129,7 @@ function getRandomSet(size, count) {
   return transpose(new Array(count).fill(0).map(calc));
 }
 
-async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
-  const texture = await setupTexture(path, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
+function imageSizeSprite(texture, pivot = new Vector2(0.0, 0.0)) {
   const geometry = new PlaneGeometry(texture.image.width, texture.image.height);
   geometry.translate(pivot.x * texture.image.width, pivot.y * texture.image.height, 0);
   const material = new ShaderMaterial({
@@ -140,6 +141,11 @@ async function imageSizeSprite(path, pivot = new Vector2(0.0, 0.0)) {
   });
   const sprite = new Mesh(geometry, material);
   return sprite;
+}
+
+async function imageSizeSpriteLoad(path, pivot) {
+  const texture = await setupTexture(path, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
+  return imageSizeSprite(texture, pivot);
 }
 // --------------------------------------------------------------------------------- Utils
 
@@ -179,6 +185,20 @@ async function setupTexture(
   [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
   [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
   texture.flipY = flipY;
+  return texture;
+}
+
+async function attachedHtmlToTexture() {
+  const toCanvas = document.querySelector('[data-canvas="input"]');
+  const canvas = await parseHTML(toCanvas);
+  const texture = new CanvasTexture(
+    canvas,
+    UVMapping,
+    ClampToEdgeWrapping,
+    ClampToEdgeWrapping,
+    LinearFilter,
+    LinearFilter,
+  );
   return texture;
 }
 
@@ -333,9 +353,14 @@ async function init() {
     return;
   }
 
+  if (!document.getElementById('noiseBG')) {
+    return;
+  }
+
   renderer = new WebGLRenderer({
     canvas: document.getElementById('noiseBG'),
     antialias: false,
+    preserveDrawingBuffer: true,
   });
 
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -416,7 +441,7 @@ async function init() {
 
   const ccDepth = 200;
   const ccPlane = getVisiblePlane(ccDepth);
-  const cargoCrane = await imageSizeSprite(cargoCraneTexture, new Vector2(-0.5, 0.5));
+  const cargoCrane = await imageSizeSpriteLoad(cargoCraneTexture, new Vector2(-0.5, 0.5));
   cargoCrane.scale.multiplyScalar(0.3);
   cargoCrane.position.x = ccPlane.w;
   cargoCrane.position.y = -ccPlane.h;
@@ -424,7 +449,7 @@ async function init() {
 
   const exh1Depth = 800;
   const exh1Plane = getVisiblePlane(exh1Depth);
-  const exh1 = await imageSizeSprite(exhaust1Texture, new Vector2(0.0, 0.5));
+  const exh1 = await imageSizeSpriteLoad(exhaust1Texture, new Vector2(0.0, 0.5));
   exh1.position.x = -200;
   exh1.position.y = -exh1Plane.h;
   exh1.position.z = -exh1Depth;
@@ -434,9 +459,14 @@ async function init() {
   fogMesh.position.y = -950;
   fogMesh.position.z = -800;
 
+  const htmlTexture = await attachedHtmlToTexture();
+  const testMesh = imageSizeSprite(htmlTexture);
+  testMesh.position.z = -500;
+
   bottomSprites.add(cargoCrane, exh1);
 
-  preScene.add(noiseQuad, shipGroup, fogMesh, bottomSprites);
+  // preScene.add(noiseQuad, shipGroup, fogMesh, bottomSprites);
+  preScene.add(testMesh);
   // --------------------------------------------------------------------------------- Pre render
 
   // --------------------------------------------------------------------------------- Composer

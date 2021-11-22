@@ -3,8 +3,8 @@ import {
   PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, TextureLoader,
   Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
   InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute,
-  InstancedMesh, MeshBasicMaterial, ClampToEdgeWrapping, Group,
-  DepthTexture, DepthFormat, UnsignedShortType, CanvasTexture, UVMapping, LinearFilter,
+  InstancedMesh, ClampToEdgeWrapping, Group, DepthTexture, DepthFormat,
+  UnsignedShortType, CanvasTexture, UVMapping, LinearFilter, Box3,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
@@ -33,10 +33,33 @@ const clock = new Clock();
 const loader = new TextureLoader();
 const planes = new Vector2(0.1, 1000);
 const fov = 75;
-const cameraMaxScrollY = -1000;
+let cameraMaxScrollY;
+const scrollSpeed = {
+  d: 1.0,
+  get D() {
+    return this.d;
+  },
+  set D(value) {
+    this.d = Math.max(Math.min(value, this.Max), this.Min);
+  },
+  min: 1.0,
+  get Min() {
+    return this.min;
+  },
+  set Min(value) {
+    this.min = value;
+  },
+  max: 10.0,
+  get Max() {
+    return this.max + this.Min;
+  },
+  set Max(value) {
+    this.max = value;
+  },
+};
 const dofProps = {
-  focusDistance: 0.3,
-  focalLength: 0.05,
+  focusDistance: 0.5,
+  focalLength: 0.1,
   bokehScale: {
     d: 2.5,
     min: 0.0,
@@ -105,8 +128,15 @@ const defaultU = {
 // --------------------------------------------------------------------------------- Uniforms
 
 // --------------------------------------------------------------------------------- Render elements
-let preScene;
-let main_camera;
+const preScene = new Scene();
+const main_camera = new PerspectiveCamera(
+  fov,
+  window.innerWidth / window.innerHeight,
+  ...planes.toArray(),
+);
+const shipGroup = new Group();
+const bottomSprites = new Group();
+const contentGroup = new Group();
 let renderTarget; let renderer; let composer;
 let noiseQuad;
 let bgEffect;
@@ -190,7 +220,11 @@ async function setupTexture(
 
 async function attachedHtmlToTexture() {
   const toCanvas = document.querySelector('[data-canvas="input"]');
-  const canvas = await parseHTML(toCanvas);
+  const params = {
+    backgroundColor: null,
+    windowWidth: Math.max(800, document.body.clientWidth - 50),
+  };
+  const canvas = await parseHTML(toCanvas, params);
   const texture = new CanvasTexture(
     canvas,
     UVMapping,
@@ -243,7 +277,7 @@ function quadGeometry() {
 
 async function fogParticles(texturePath) {
   const geometry = quadGeometry();
-  const count = 20;
+  const count = 10;
   const angleRange = new Vector2(-Math.PI * 0.05, Math.PI * 0.05);
   const speedRange = new Vector2(10.0, 40.0);
   const aSpeedRange = new Vector2(0.0, 0.5);
@@ -369,7 +403,7 @@ async function init() {
   renderTarget = new WebGLMultipleRenderTargets(
     window.innerWidth,
     window.innerHeight,
-    2,
+    3,
   );
 
   for (let i = 0; i < renderTarget.texture.length; i++) {
@@ -388,15 +422,12 @@ async function init() {
 
   renderTarget.texture[0].name = 'color';
   renderTarget.texture[1].name = 'noise';
+  renderTarget.texture[2].name = 'colortex2';
 
-  preScene = new Scene();
+  const farPlane = getVisiblePlane(planes.y);
 
-  main_camera = new PerspectiveCamera(
-    fov,
-    window.innerWidth / window.innerHeight,
-    ...planes.toArray(),
-  );
-  const plane = getVisiblePlane(planes.y);
+  const bodyHeight = (scrollSpeed.Max - scrollSpeed.D) * window.innerHeight;
+  document.body.style.height = `${bodyHeight}px`;
 
   // --------------------------------------------------------------------------------- Pre render
   const noiseBGMaterial = new ShaderMaterial({
@@ -405,10 +436,21 @@ async function init() {
     fragmentShader: noiseBG.fragmentShader,
     glslVersion: GLSL3,
   });
-  noiseQuad = new Mesh(new PlaneGeometry(plane.w, plane.h), noiseBGMaterial);
+  noiseQuad = new Mesh(new PlaneGeometry(farPlane.w, farPlane.h), noiseBGMaterial);
   noiseQuad.position.z = -planes.y;
 
-  const shipGroup = new Group();
+  const htmlTexture = await attachedHtmlToTexture();
+  const testMesh = imageSizeSprite(htmlTexture, new Vector2(0.0, -0.5));
+
+  const contentZ = 500;
+  const contentPlane = getVisiblePlane(contentZ);
+  contentGroup.add(testMesh);
+  contentGroup.position.y = contentPlane.h;
+  contentGroup.position.z = -contentZ;
+  const contentBox = new Box3().setFromObject(contentGroup);
+  const contentHeight = contentBox.getSize(new Vector3()).y;
+  cameraMaxScrollY = Math.min(-contentHeight + contentPlane.h * 2, 0);
+
   shipGroup.position.y = cameraMaxScrollY * 0.2;
   const shipMesh1 = await airshipParticles(airship1Texture, {
     count: 3,
@@ -436,9 +478,6 @@ async function init() {
   });
   shipGroup.add(shipMesh1, shipMesh2, shipMesh3);
 
-  const bottomSprites = new Group();
-  bottomSprites.position.y = cameraMaxScrollY;
-
   const ccDepth = 200;
   const ccPlane = getVisiblePlane(ccDepth);
   const cargoCrane = await imageSizeSpriteLoad(cargoCraneTexture, new Vector2(-0.5, 0.5));
@@ -447,26 +486,22 @@ async function init() {
   cargoCrane.position.y = -ccPlane.h;
   cargoCrane.position.z = -ccDepth;
 
-  const exh1Depth = 800;
+  const exh1Depth = 799;
   const exh1Plane = getVisiblePlane(exh1Depth);
   const exh1 = await imageSizeSpriteLoad(exhaust1Texture, new Vector2(0.0, 0.5));
   exh1.position.x = -200;
   exh1.position.y = -exh1Plane.h;
   exh1.position.z = -exh1Depth;
 
+  bottomSprites.add(cargoCrane, exh1);
+  bottomSprites.position.y = cameraMaxScrollY;
+
   const fogMesh = await fogParticles(fogTexture);
   fogMesh.position.x = -200;
-  fogMesh.position.y = -950;
+  fogMesh.position.y = -910;
   fogMesh.position.z = -800;
 
-  const htmlTexture = await attachedHtmlToTexture();
-  const testMesh = imageSizeSprite(htmlTexture);
-  testMesh.position.z = -500;
-
-  bottomSprites.add(cargoCrane, exh1);
-
-  // preScene.add(noiseQuad, shipGroup, fogMesh, bottomSprites);
-  preScene.add(testMesh);
+  preScene.add(noiseQuad, shipGroup, fogMesh, bottomSprites, contentGroup);
   // --------------------------------------------------------------------------------- Pre render
 
   // --------------------------------------------------------------------------------- Composer
@@ -476,6 +511,7 @@ async function init() {
     sceneTexture: { value: renderTarget.texture[0] },
     depthTexture: { value: renderTarget.depthTexture },
     noiseTexture: { value: renderTarget.texture[1] },
+    alphaTexture: { value: renderTarget.texture[2] },
     ...updatableU,
     near: { value: planes.x },
     far: { value: planes.y },
@@ -499,6 +535,7 @@ async function init() {
 
   const geometry = new EffectPass(main_camera, bgEffect);
   const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
+  effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
   composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer

@@ -9,6 +9,7 @@ const noiseBG = {
   fragmentShader: `
     layout(location = 0) out vec4 color;
     layout(location = 1) out vec4 noise;
+    layout(location = 2) out vec4 colortex2;
 
     uniform float time;
     uniform vec2 resolution;
@@ -88,6 +89,7 @@ const noiseBG = {
 
       color = vec4(0.0);
       noise = vec4(vec3(s), 1.0);
+      colortex2 = vec4(0.0);
     }
   `,
 };

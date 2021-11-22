@@ -35,15 +35,17 @@ const airships = {
   fragmentShader: `
     layout(location = 0) out vec4 color;
     layout(location = 1) out vec4 noise;
+    layout(location = 2) out vec4 colortex2;
     uniform sampler2D tex;
     in vec2 vUv;
 
     void main() 
     {
       vec4 col = texture(tex, vUv);
-      if (col.a <= 0.0) discard;
+      if (col.a <= 0.05) discard;
       color = col;
       noise = vec4(0.0);
+      colortex2 = vec4(col.a, 0.0, 0.0, 1.0);
     }`,
 };
 

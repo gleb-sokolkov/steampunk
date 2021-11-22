@@ -1,6 +1,6 @@
 const fog = {
   uniforms: {
-    baseOpaque: { value: 1.0 },
+    baseTransparency: { value: 0.25 },
   },
   vertexShader: `
     attribute vec3 movement;
@@ -38,18 +38,19 @@ const fog = {
   fragmentShader: `
     layout(location = 0) out vec4 color;
     layout(location = 1) out vec4 noise;
+    layout(location = 2) out vec4 colortex2;
     uniform sampler2D dif;
-    uniform float baseOpaque;
+    uniform float baseTransparency;
 
     in vec2 vUv;
     in float fade;
 
-
     void main() {
       vec4 col = texture(dif, vUv) * fade;
       if (col.a <= 0.05) discard;
-      color = vec4(col.rgb, col.a*baseOpaque);
+      color = vec4(col.rgb, 1.0);
       noise = vec4(0.0);
+      colortex2 = vec4(mix(col.a, 1.0, baseTransparency), 0.0, 0.0, 1.0);
     }
   `,
 };

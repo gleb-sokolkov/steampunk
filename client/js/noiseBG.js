@@ -12,7 +12,14 @@ import {
   SMAAEffect,
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
+import {
+  BehaviorSubject, from, last, Subject,
+} from 'rxjs';
 import { FilmEffect, BGEffect } from './effects';
+import {
+  setupTexture, getVisiblePlane, getRandomRange, imageSizeSpriteLoad,
+} from './utils';
+import HTMLObj from './html/static';
 // shaders
 import noiseBG from './shaders/noiseBG';
 import airships from './shaders/airships';
@@ -33,7 +40,7 @@ const clock = new Clock();
 const loader = new TextureLoader();
 const planes = new Vector2(0.1, 1000);
 const fov = 75;
-let cameraMaxScrollY;
+const cameraMaxScrollY = new BehaviorSubject(0);
 const scrollSpeed = {
   d: 1.0,
   get D() {
@@ -92,16 +99,7 @@ const airshipOptions = {
   speedRange: new Vector2(10.0, 75.0),
   size: 20.0,
 };
-const getVisiblePlane = (() => {
-  const data = {};
-  return (z) => {
-    if (data[z]) return data[z];
-    const h = z * Math.tan(main_camera.fov * 0.5 * Math.PI / 180);
-    const w = h * main_camera.aspect;
-    data[z] = { w, h };
-    return data[z];
-  };
-})();
+
 // --------------------------------------------------------------------------------- Constants
 
 // --------------------------------------------------------------------------------- Uniforms
@@ -137,47 +135,11 @@ const main_camera = new PerspectiveCamera(
 const shipGroup = new Group();
 const bottomSprites = new Group();
 const contentGroup = new Group();
+const canvasObjs = [];
 let renderTarget; let renderer; let composer;
 let noiseQuad;
 let bgEffect;
 // --------------------------------------------------------------------------------- Render elements
-
-// --------------------------------------------------------------------------------- Utils
-function getRandomRange(vec) {
-  return Math.random() * (vec.y - vec.x) + vec.x;
-}
-
-function transpose(a) {
-  return a[0].map((_, c) => a.map((r) => r[c]));
-}
-
-function getRandomSet(size, count) {
-  if (size * count > 0) return null;
-
-  const calc = () => new Array(size).fill(0).map(Math.random);
-
-  return transpose(new Array(count).fill(0).map(calc));
-}
-
-function imageSizeSprite(texture, pivot = new Vector2(0.0, 0.0)) {
-  const geometry = new PlaneGeometry(texture.image.width, texture.image.height);
-  geometry.translate(pivot.x * texture.image.width, pivot.y * texture.image.height, 0);
-  const material = new ShaderMaterial({
-    ...basic,
-    uniforms: { dif: { value: texture } },
-    transparent: true,
-    depthTest: true,
-    glslVersion: GLSL3,
-  });
-  const sprite = new Mesh(geometry, material);
-  return sprite;
-}
-
-async function imageSizeSpriteLoad(path, pivot) {
-  const texture = await setupTexture(path, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
-  return imageSizeSprite(texture, pivot);
-}
-// --------------------------------------------------------------------------------- Utils
 
 function onWindowResize() {
   main_camera.aspect = window.innerWidth / window.innerHeight;
@@ -202,38 +164,7 @@ function onWindowScroll() {
   const ws = window.scrollY;
   const val = ws / (mh - wh + 0.1);
   updatableU.scrollY.value = val;
-  main_camera.position.y = val * cameraMaxScrollY;
-}
-
-async function setupTexture(
-  path, wrapS, wrapT,
-  flipY = false,
-  minFilter = NearestFilter,
-  magFilter = NearestFilter,
-) {
-  const texture = await loader.loadAsync(path);
-  [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
-  [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
-  texture.flipY = flipY;
-  return texture;
-}
-
-async function attachedHtmlToTexture() {
-  const toCanvas = document.querySelector('[data-canvas="input"]');
-  const params = {
-    backgroundColor: null,
-    windowWidth: Math.max(800, document.body.clientWidth - 50),
-  };
-  const canvas = await parseHTML(toCanvas, params);
-  const texture = new CanvasTexture(
-    canvas,
-    UVMapping,
-    ClampToEdgeWrapping,
-    ClampToEdgeWrapping,
-    LinearFilter,
-    LinearFilter,
-  );
-  return texture;
+  main_camera.position.y = val * cameraMaxScrollY.getValue();
 }
 
 async function genAreaSearchImages() {
@@ -334,7 +265,7 @@ async function airshipParticles(texturePath, options = airshipOptions) {
   for (let i = 0; i < count; i++) {
     const randomVector = new Vector3();
     randomVector.z = Math.random() * (planes.y - nearOffset - farOffset);
-    const zPlane = getVisiblePlane(nearOffset + randomVector.z);
+    const zPlane = getVisiblePlane(nearOffset + randomVector.z, main_camera);
     zPlane.w *= 2.0;
     zPlane.h *= 2.0;
     randomVector.x = (Math.random() - 0.5) * zPlane.w * offsetMult.x;
@@ -424,7 +355,7 @@ async function init() {
   renderTarget.texture[1].name = 'noise';
   renderTarget.texture[2].name = 'colortex2';
 
-  const farPlane = getVisiblePlane(planes.y);
+  const farPlane = getVisiblePlane(planes.y, main_camera);
 
   const bodyHeight = (scrollSpeed.Max - scrollSpeed.D) * window.innerHeight;
   document.body.style.height = `${bodyHeight}px`;
@@ -439,19 +370,39 @@ async function init() {
   noiseQuad = new Mesh(new PlaneGeometry(farPlane.w, farPlane.h), noiseBGMaterial);
   noiseQuad.position.z = -planes.y;
 
-  const htmlTexture = await attachedHtmlToTexture();
-  const testMesh = imageSizeSprite(htmlTexture, new Vector2(0.0, -0.5));
+  const toCanvas = [...document.querySelectorAll('[data-content="true"]')];
 
-  const contentZ = 500;
-  const contentPlane = getVisiblePlane(contentZ);
-  contentGroup.add(testMesh);
-  contentGroup.position.y = contentPlane.h;
-  contentGroup.position.z = -contentZ;
-  const contentBox = new Box3().setFromObject(contentGroup);
-  const contentHeight = contentBox.getSize(new Vector3()).y;
-  cameraMaxScrollY = Math.min(-contentHeight + contentPlane.h * 2, 0);
+  const contentSubject = new Subject();
+  const meshes = await Promise.all(toCanvas.map((i) => {
+    const staticObj = new HTMLObj(i, main_camera, cameraMaxScrollY);
+    return staticObj.createMesh(basic);
+  }));
+  const subForGroup = from(meshes).subscribe({
+    next: (mesh) => {
+      contentGroup.add(mesh);
+    },
+  });
+  const subForCamera = from(meshes).pipe(last()).subscribe({
+    next: (mesh) => {
+      const contentBox = new Box3().setFromObject(contentGroup);
+      const contentHeight = contentBox.getSize(new Vector3()).y;
+      cameraMaxScrollY.next(Math.min(-contentHeight, 0));
+    },
+  });
+  meshes.forEach((m) => contentSubject.next(m));
+  subForGroup.unsubscribe();
+  subForCamera.unsubscribe();
 
-  shipGroup.position.y = cameraMaxScrollY * 0.2;
+  // const contentZ = 500;
+  // const contentPlane = getVisiblePlane(contentZ);
+  // contentGroup.add(testMesh);
+  // contentGroup.position.y = contentPlane.h;
+  // contentGroup.position.z = -contentZ;
+  // const contentBox = new Box3().setFromObject(contentGroup);
+  // const contentHeight = contentBox.getSize(new Vector3()).y;
+  // cameraMaxScrollY = Math.min(-contentHeight + contentPlane.h * 2, 0);
+
+  shipGroup.position.y = -500;
   const shipMesh1 = await airshipParticles(airship1Texture, {
     count: 3,
     farOffset: 0,
@@ -479,29 +430,33 @@ async function init() {
   shipGroup.add(shipMesh1, shipMesh2, shipMesh3);
 
   const ccDepth = 200;
-  const ccPlane = getVisiblePlane(ccDepth);
-  const cargoCrane = await imageSizeSpriteLoad(cargoCraneTexture, new Vector2(-0.5, 0.5));
+  const ccPlane = getVisiblePlane(ccDepth, main_camera);
+  const cargoCrane = await imageSizeSpriteLoad(cargoCraneTexture, basic, new Vector2(-0.5, 0.5));
   cargoCrane.scale.multiplyScalar(0.3);
   cargoCrane.position.x = ccPlane.w;
   cargoCrane.position.y = -ccPlane.h;
   cargoCrane.position.z = -ccDepth;
 
   const exh1Depth = 799;
-  const exh1Plane = getVisiblePlane(exh1Depth);
-  const exh1 = await imageSizeSpriteLoad(exhaust1Texture, new Vector2(0.0, 0.5));
+  const exh1Plane = getVisiblePlane(exh1Depth, main_camera);
+  const exh1 = await imageSizeSpriteLoad(exhaust1Texture, basic, new Vector2(0.0, 0.5));
   exh1.position.x = -200;
   exh1.position.y = -exh1Plane.h;
   exh1.position.z = -exh1Depth;
 
   bottomSprites.add(cargoCrane, exh1);
-  bottomSprites.position.y = cameraMaxScrollY;
+  cameraMaxScrollY.subscribe({
+    next: (y) => {
+      bottomSprites.position.y = y;
+    },
+  });
 
   const fogMesh = await fogParticles(fogTexture);
   fogMesh.position.x = -200;
   fogMesh.position.y = -910;
   fogMesh.position.z = -800;
 
-  preScene.add(noiseQuad, shipGroup, fogMesh, bottomSprites, contentGroup);
+  preScene.add(noiseQuad, contentGroup, shipGroup, bottomSprites, fogMesh);
   // --------------------------------------------------------------------------------- Pre render
 
   // --------------------------------------------------------------------------------- Composer
@@ -537,7 +492,7 @@ async function init() {
   const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
-  composer.addPass(effectPass);
+  // composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 
   // why it isn't possible to do in the constructor?

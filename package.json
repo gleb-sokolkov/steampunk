@@ -27,6 +27,7 @@
     "html2canvas": "^1.3.2",
     "postprocessing": "^6.23.2",
     "regenerator-runtime": "^0.13.9",
+    "rxjs": "^7.4.0",
     "three": "^0.132.2"
   },
   "devDependencies": {
@@ -83,7 +84,19 @@
           "global-require": "off",
           "no-plusplus": "off",
           "camelcase": "off",
-          "no-unused-vars": "off"
+          "no-unused-vars": "off",
+          "radix": "off",
+          "prefer-const": "off"
+        }
+      },
+      {
+        "files":[
+          "utils.js"
+        ],
+        "rules": {
+          "no-use-before-define": "off",
+          "no-mixed-operators": "off",
+          "no-param-reassign": "off"
         }
       }
     ],

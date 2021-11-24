@@ -11,25 +11,7 @@ html, body {
 }
 
 .test {
-  display: block;
-  width: 50%;
-  height: 1000px;
-  margin: 0 auto;
-  opacity: 0;
-  background-color: black;
-  margin-bottom: 3rem;
-
-  &_theme_red {
-    background-color: salmon;
-  }
-
-  &_theme_green {
-    background-color: rgb(114, 250, 148);
-  }
-
-  &_theme_blue {
-    background-color: rgb(114, 173, 250);
-  }
+  background: white;
 }
 
 .font {
@@ -39,7 +21,7 @@ html, body {
   text-transform: uppercase;
 }
 
-[data-to="canvas"] {
+[data-to="canvas"] > [data-canvas="text"] {
   position: fixed;
   transform: translate(-100%);
   z-index: -1;

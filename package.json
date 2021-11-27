@@ -91,12 +91,16 @@
       },
       {
         "files":[
-          "utils.js"
+          "utils.js",
+          "static.js",
+          "params.js"
         ],
         "rules": {
           "no-use-before-define": "off",
           "no-mixed-operators": "off",
-          "no-param-reassign": "off"
+          "no-param-reassign": "off",
+          "max-classes-per-file": "off",
+          "no-unused-vars": "off"
         }
       }
     ],

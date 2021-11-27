@@ -76,7 +76,7 @@ function viewportToPx(val, unit, depth, cam, maxY) {
   if (unit === 'vx') {
     return val * plane.w * 2.0;
   } if (unit === 'vy') {
-    return val * (plane.h * 2.0 + maxY);
+    return val * (plane.h + maxY);
   } if (unit === 'vz') {
     const sign = Math.sign(val);
     return (Math.abs(val) * (cam.far - cam.near) + cam.near) * sign;
@@ -84,8 +84,36 @@ function viewportToPx(val, unit, depth, cam, maxY) {
   return +val;
 }
 
+function parseViewport(str, cam, maxY) {
+  if (!Number.isNaN(parseFloat(str))) {
+    const data = matchViewport(str);
+    if (!data) return +str;
+    return viewportToPx(data[1], data[3], 0, cam, maxY);
+  }
+  return str;
+}
+
+function parseHTMLDataset(dataset) {
+  const newDataset = Object.entries({ ...dataset })
+    .reduce((acc, [k, v]) => {
+      if (!Number.isNaN(parseFloat(v))) {
+        const data = matchViewport(v);
+        if (data) {
+          acc.viewport[k] = {
+            val: data[1],
+            unit: data[3],
+          };
+        } else {
+          acc.static[k] = +v;
+        }
+      }
+      return acc;
+    }, { static: {}, viewport: {} });
+  return newDataset;
+}
+
 export {
-  getRandomRange, transpose, getRandomSet, imageSizeSprite,
-  setupTexture, imageSizeSpriteLoad, viewportToPx,
-  getVisiblePlane, matchViewport,
+  getRandomRange, transpose, getRandomSet, imageSizeSprite, setupTexture,
+  imageSizeSpriteLoad, viewportToPx, parseHTMLDataset, getVisiblePlane,
+  matchViewport, parseViewport,
 };

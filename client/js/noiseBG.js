@@ -372,35 +372,25 @@ async function init() {
 
   const toCanvas = [...document.querySelectorAll('[data-content="true"]')];
 
-  const contentSubject = new Subject();
-  const meshes = await Promise.all(toCanvas.map((i) => {
-    const staticObj = new HTMLObj(i, main_camera, cameraMaxScrollY);
-    return staticObj.createMesh(basic);
+  const htmlObjects = await Promise.all(toCanvas.map(async (i) => {
+    const staticObj = new HTMLObj(i, basic, main_camera);
+    await staticObj.createMesh();
+    staticObj.setPosition();
+    return staticObj;
   }));
-  const subForGroup = from(meshes).subscribe({
-    next: (mesh) => {
-      contentGroup.add(mesh);
-    },
-  });
-  const subForCamera = from(meshes).pipe(last()).subscribe({
-    next: (mesh) => {
-      const contentBox = new Box3().setFromObject(contentGroup);
-      const contentHeight = contentBox.getSize(new Vector3()).y;
-      cameraMaxScrollY.next(Math.min(-contentHeight, 0));
-    },
-  });
-  meshes.forEach((m) => contentSubject.next(m));
-  subForGroup.unsubscribe();
-  subForCamera.unsubscribe();
 
-  // const contentZ = 500;
-  // const contentPlane = getVisiblePlane(contentZ);
-  // contentGroup.add(testMesh);
-  // contentGroup.position.y = contentPlane.h;
-  // contentGroup.position.z = -contentZ;
-  // const contentBox = new Box3().setFromObject(contentGroup);
-  // const contentHeight = contentBox.getSize(new Vector3()).y;
-  // cameraMaxScrollY = Math.min(-contentHeight + contentPlane.h * 2, 0);
+  htmlObjects.forEach((o) => {
+    contentGroup.add(o.mesh);
+    console.log(o);
+    // const contentBox = new Box3().setFromObject(contentGroup);
+    // const contentHeight = contentBox.getSize(new Vector3()).y;
+    // cameraMaxScrollY.next(Math.min(-contentHeight, 0));
+  });
+
+  // htmlObjects.forEach((o) => {
+  //   const y = cameraMaxScrollY.getValue();
+  //   o.updateViewport(y);
+  // });
 
   shipGroup.position.y = -500;
   const shipMesh1 = await airshipParticles(airship1Texture, {

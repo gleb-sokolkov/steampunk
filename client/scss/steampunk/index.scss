@@ -21,7 +21,7 @@ html, body {
   text-transform: uppercase;
 }
 
-[data-to="canvas"] > [data-canvas="text"] {
+[data-to="canvas"] > [data-type] {
   position: fixed;
   transform: translate(-100%);
   z-index: -1;

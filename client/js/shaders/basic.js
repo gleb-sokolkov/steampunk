@@ -1,12 +1,23 @@
 const basic = {
   uniforms: {
     dif: { value: null },
+    rotation: { value: 0 },
   },
   vertexShader: `
     out vec2 vuv;
 
+    uniform float time;
+    uniform float rotation;
+
+    vec2 rotZ(vec2 v, float a) {
+      vec2 cs = vec2(cos(a), sin(a));
+      return mat2(cs.x, -cs.y, cs.y, cs.x) * v;
+    }
+
     void main() {
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vec4 newPos = vec4(position, 1.0);
+      newPos.xy = rotZ(newPos.xy, rotation * time);
+      gl_Position = projectionMatrix * modelViewMatrix * newPos;
       vuv = uv;
     }
   `,

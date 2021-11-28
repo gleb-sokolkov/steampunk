@@ -1,8 +1,7 @@
 import {
   PlaneGeometry, Mesh, Vector2, ShaderMaterial, GLSL3,
-  ClampToEdgeWrapping,
-  NearestFilter,
-  TextureLoader,
+  ClampToEdgeWrapping, InstancedBufferGeometry, BufferAttribute,
+  NearestFilter, TextureLoader,
 } from 'three';
 
 const loader = new TextureLoader();
@@ -28,7 +27,7 @@ function imageSizeSprite(texture, config, pivot = new Vector2(0.0, 0.0)) {
   geometry.translate(pivot.x * texture.image.width, pivot.y * texture.image.height, 0);
   const material = new ShaderMaterial({
     ...config,
-    uniforms: { dif: { value: texture } },
+    uniforms: { ...config.uniforms, dif: { value: texture } },
     transparent: true,
     depthTest: true,
     glslVersion: GLSL3,
@@ -37,21 +36,30 @@ function imageSizeSprite(texture, config, pivot = new Vector2(0.0, 0.0)) {
   return sprite;
 }
 
-async function setupTexture(
-  path, wrapS, wrapT,
-  flipY = false,
-  minFilter = NearestFilter,
-  magFilter = NearestFilter,
-) {
-  const texture = await loader.loadAsync(path);
-  [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
-  [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
-  texture.flipY = flipY;
-  return texture;
-}
+const setupTexture = (() => {
+  const data = {};
+  const images = mapFiles(require.context('../images/', false, /\.(png|jpe?g)$/));
+  return async (
+    name, wrapS, wrapT,
+    flipY = false,
+    minFilter = NearestFilter,
+    magFilter = NearestFilter,
+  ) => {
+    if (data[name]) return data[name];
 
-async function imageSizeSpriteLoad(path, config, pivot) {
-  const texture = await setupTexture(path, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
+    const path = images[name];
+
+    const texture = await loader.loadAsync(path);
+    [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
+    [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
+    texture.flipY = flipY;
+    data[name] = texture;
+    return texture;
+  };
+})();
+
+async function imageSizeSpriteLoad(name, config, pivot) {
+  const texture = await setupTexture(name, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
   return imageSizeSprite(texture, config, pivot);
 }
 
@@ -103,17 +111,46 @@ function parseHTMLDataset(dataset) {
             val: data[1],
             unit: data[3],
           };
-        } else {
-          acc.static[k] = +v;
-        }
-      }
+        } else acc.static[k] = +v;
+      } else acc.static[k] = v;
       return acc;
     }, { static: {}, viewport: {} });
   return newDataset;
 }
 
+function mapFiles(context) {
+  const keys = context.keys();
+  const values = keys.map(context);
+  return keys.reduce((accumulator, key, index) => ({
+    ...accumulator,
+    [key.replace(/([\\/.*]+)(\w+).\w+$/, '$2')]: values[index],
+  }), {});
+}
+
+function quadGeometry() {
+  const geometry = new InstancedBufferGeometry();
+
+  const positions = new BufferAttribute(new Float32Array(4 * 3), 3);
+  positions.setXYZ(0, -0.5, 0.5, 0.0);
+  positions.setXYZ(1, 0.5, 0.5, 0.0);
+  positions.setXYZ(2, -0.5, -0.5, 0.0);
+  positions.setXYZ(3, 0.5, -0.5, 0.0);
+  geometry.setAttribute('position', positions);
+
+  const uvs = new BufferAttribute(new Float32Array(4 * 2), 2);
+  uvs.setXY(0, 0.0, 0.0);
+  uvs.setXY(1, 1.0, 0.0);
+  uvs.setXY(2, 0.0, 1.0);
+  uvs.setXY(3, 1.0, 1.0);
+  geometry.setAttribute('uv', uvs);
+
+  geometry.setIndex(new BufferAttribute(new Uint16Array([0, 2, 1, 2, 3, 1]), 1));
+
+  return geometry;
+}
+
 export {
   getRandomRange, transpose, getRandomSet, imageSizeSprite, setupTexture,
   imageSizeSpriteLoad, viewportToPx, parseHTMLDataset, getVisiblePlane,
-  matchViewport, parseViewport,
+  matchViewport, parseViewport, mapFiles, quadGeometry,
 };

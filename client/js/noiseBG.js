@@ -1,10 +1,10 @@
 import {
-  Clock, FloatType, GLSL3, Mesh, NearestFilter, PerspectiveCamera,
-  PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, TextureLoader,
-  Vector2, Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
-  InstancedBufferGeometry, InstancedBufferAttribute, BufferAttribute,
-  InstancedMesh, ClampToEdgeWrapping, Group, DepthTexture, DepthFormat,
-  UnsignedShortType, CanvasTexture, UVMapping, LinearFilter, Box3,
+  FloatType, GLSL3, Mesh, NearestFilter, PerspectiveCamera,
+  PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, Vector2,
+  Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
+  InstancedBufferAttribute, BufferAttribute, InstancedMesh,
+  ClampToEdgeWrapping, Group, DepthTexture, DepthFormat,
+  UnsignedShortType,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
@@ -12,19 +12,16 @@ import {
   SMAAEffect,
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
-import {
-  BehaviorSubject, from, last, Subject,
-} from 'rxjs';
 import { FilmEffect, BGEffect } from './effects';
 import {
-  setupTexture, getVisiblePlane, getRandomRange, imageSizeSpriteLoad,
+  setupTexture, getVisiblePlane, getRandomRange, quadGeometry,
 } from './utils';
-import HTMLObj from './html/static';
-// shaders
-import noiseBG from './shaders/noiseBG';
-import airships from './shaders/airships';
-import fog from './shaders/fog';
-import basic from './shaders/basic';
+import {
+  clock, planes, fov, cameraMaxScrollY, scrollSpeed,
+  dofProps, filmProps, airshipOptions, updatableU, shaders,
+} from './constants';
+import { HTMLCreator } from './html/htmlFactory';
+
 // images & textures
 import airship1Texture from '../images/airship1_.png';
 import ballons1Texture from '../images/ballons1_.png';
@@ -33,99 +30,8 @@ import fogTexture from '../images/fog_.png';
 import cargoCraneTexture from '../images/cargo_crane_.png';
 import exhaust1Texture from '../images/exhaust1_.png';
 
-import parseHTML from './parseHTML';
-
-// --------------------------------------------------------------------------------- Constants
-const clock = new Clock();
-const loader = new TextureLoader();
-const planes = new Vector2(0.1, 1000);
-const fov = 75;
-const cameraMaxScrollY = new BehaviorSubject(0);
-const scrollSpeed = {
-  d: 1.0,
-  get D() {
-    return this.d;
-  },
-  set D(value) {
-    this.d = Math.max(Math.min(value, this.Max), this.Min);
-  },
-  min: 1.0,
-  get Min() {
-    return this.min;
-  },
-  set Min(value) {
-    this.min = value;
-  },
-  max: 10.0,
-  get Max() {
-    return this.max + this.Min;
-  },
-  set Max(value) {
-    this.max = value;
-  },
-};
-const dofProps = {
-  focusDistance: 0.5,
-  focalLength: 0.1,
-  bokehScale: {
-    d: 2.5,
-    min: 0.0,
-    max: 5.0,
-  },
-};
-const filmProps = {
-  nIntensity: {
-    d: 0.05,
-    min: 0.0,
-    max: 1.0,
-  },
-  sIntensity: {
-    d: 0.0,
-    min: 0.0,
-    max: 1.0,
-  },
-  sCount: {
-    d: 500,
-    min: 0,
-    max: 1000,
-  },
-};
-
-const airshipOptions = {
-  count: 10,
-  nearOffset: 100,
-  farOffset: 700,
-  offsetMult: new Vector2(1.0, 2.0),
-  speedRange: new Vector2(10.0, 75.0),
-  size: 20.0,
-};
-
-// --------------------------------------------------------------------------------- Constants
-
-// --------------------------------------------------------------------------------- Uniforms
-const updatableU = {
-  time: {
-    type: 'f',
-    value: 0,
-  },
-  resolution: {
-    type: 'v2',
-    value: null,
-  },
-  scrollY: {
-    type: 'f',
-    value: 0,
-  },
-};
-
-const defaultU = {
-  time: updatableU.time,
-  resolution: updatableU.resolution,
-  scrollY: updatableU.scrollY,
-};
-// --------------------------------------------------------------------------------- Uniforms
-
 // --------------------------------------------------------------------------------- Render elements
+const htmlCreator = new HTMLCreator();
 const preScene = new Scene();
 const main_camera = new PerspectiveCamera(
   fov,
@@ -184,28 +90,6 @@ async function genAreaSearchImages() {
   return [searchImage, areaImage];
 }
 
-function quadGeometry() {
-  const geometry = new InstancedBufferGeometry();
-
-  const positions = new BufferAttribute(new Float32Array(4 * 3), 3);
-  positions.setXYZ(0, -0.5, 0.5, 0.0);
-  positions.setXYZ(1, 0.5, 0.5, 0.0);
-  positions.setXYZ(2, -0.5, -0.5, 0.0);
-  positions.setXYZ(3, 0.5, -0.5, 0.0);
-  geometry.setAttribute('position', positions);
-
-  const uvs = new BufferAttribute(new Float32Array(4 * 2), 2);
-  uvs.setXY(0, 0.0, 0.0);
-  uvs.setXY(1, 1.0, 0.0);
-  uvs.setXY(2, 0.0, 1.0);
-  uvs.setXY(3, 1.0, 1.0);
-  geometry.setAttribute('uv', uvs);
-
-  geometry.setIndex(new BufferAttribute(new Uint16Array([0, 2, 1, 2, 3, 1]), 1));
-
-  return geometry;
-}
-
 async function fogParticles(texturePath) {
   const geometry = quadGeometry();
   const count = 10;
@@ -233,12 +117,12 @@ async function fogParticles(texturePath) {
   geometry.setAttribute('scale', scale);
   const material = new ShaderMaterial({
     uniforms: {
-      ...fog.uniforms,
+      ...shaders.fog.uniforms,
       ...updatableU,
       dif: { value: texture },
     },
-    vertexShader: fog.vertexShader,
-    fragmentShader: fog.fragmentShader,
+    vertexShader: shaders.fog.vertexShader,
+    fragmentShader: shaders.fog.fragmentShader,
     transparent: true,
     depthTest: true,
     glslVersion: GLSL3,
@@ -284,12 +168,12 @@ async function airshipParticles(texturePath, options = airshipOptions) {
   geometry.setAttribute('offsetVel', offsetWithVel);
   const material = new ShaderMaterial({
     uniforms: {
-      ...airships.uniforms,
+      ...shaders.airships.uniforms,
       ...updatableU,
       tex: { value: texture },
     },
-    vertexShader: airships.vertexShader,
-    fragmentShader: airships.fragmentShader,
+    vertexShader: shaders.airships.vertexShader,
+    fragmentShader: shaders.airships.fragmentShader,
     transparent: true,
     depthTest: true,
     glslVersion: GLSL3,
@@ -362,91 +246,91 @@ async function init() {
 
   // --------------------------------------------------------------------------------- Pre render
   const noiseBGMaterial = new ShaderMaterial({
-    uniforms: { ...noiseBG.uniforms, ...updatableU },
-    vertexShader: noiseBG.vertexShader,
-    fragmentShader: noiseBG.fragmentShader,
+    uniforms: { ...shaders.noiseBG.uniforms, ...updatableU },
+    vertexShader: shaders.noiseBG.vertexShader,
+    fragmentShader: shaders.noiseBG.fragmentShader,
     glslVersion: GLSL3,
   });
   noiseQuad = new Mesh(new PlaneGeometry(farPlane.w, farPlane.h), noiseBGMaterial);
   noiseQuad.position.z = -planes.y;
 
-  const toCanvas = [...document.querySelectorAll('[data-content="true"]')];
+  const toCanvas = [...document.querySelectorAll('[data-type]')];
 
   const htmlObjects = await Promise.all(toCanvas.map(async (i) => {
-    const staticObj = new HTMLObj(i, basic, main_camera);
-    await staticObj.createMesh();
-    staticObj.setPosition();
-    return staticObj;
+    const obj = htmlCreator.parseElement(i, i, main_camera);
+    await obj.createMesh();
+    obj.updateViewport(cameraMaxScrollY.getValue());
+    obj.setMatrix();
+    return obj;
   }));
 
   htmlObjects.forEach((o) => {
     contentGroup.add(o.mesh);
-    console.log(o);
-    // const contentBox = new Box3().setFromObject(contentGroup);
-    // const contentHeight = contentBox.getSize(new Vector3()).y;
-    // cameraMaxScrollY.next(Math.min(-contentHeight, 0));
+    cameraMaxScrollY.next(
+      Math.min(
+        o.mesh.position.y,
+        cameraMaxScrollY.getValue(),
+      ),
+    );
   });
 
-  // htmlObjects.forEach((o) => {
-  //   const y = cameraMaxScrollY.getValue();
-  //   o.updateViewport(y);
+  htmlObjects.forEach((o) => {
+    const y = cameraMaxScrollY.getValue();
+    o.updateViewport(y);
+    o.updateAnimation?.();
+    o.setMatrix();
+  });
+
+  // shipGroup.position.y = -500;
+  // const shipMesh1 = await airshipParticles(airship1Texture, {
+  //   count: 3,
+  //   farOffset: 0,
+  //   nearOffset: 500,
+  //   offsetMult: new Vector2(1.0, 1.0),
+  //   size: 300,
+  //   speedRange: new Vector2(25.0, 50.0),
+  // });
+  // const shipMesh2 = await airshipParticles(ballons3Texture, {
+  //   count: 10,
+  //   farOffset: 0,
+  //   nearOffset: 200,
+  //   offsetMult: new Vector2(1.0, 1.0),
+  //   size: 100,
+  //   speedRange: new Vector2(10.0, 30.0),
+  // });
+  // const shipMesh3 = await airshipParticles(ballons1Texture, {
+  //   count: 10,
+  //   farOffset: 600,
+  //   nearOffset: 100,
+  //   offsetMult: new Vector2(1.0, 1.0),
+  //   size: 50,
+  //   speedRange: new Vector2(10.0, 20.0),
+  // });
+  // shipGroup.add(shipMesh1, shipMesh2, shipMesh3);
+
+  // const ccDepth = 200;
+  // const ccPlane = getVisiblePlane(ccDepth, main_camera);
+  // const cargoCrane = await imageSizeSpriteLoad(cargoCraneTexture, basic, new Vector2(-0.5, 0.5));
+  // cargoCrane.scale.multiplyScalar(0.3);
+  // cargoCrane.position.x = ccPlane.w;
+  // cargoCrane.position.y = -ccPlane.h;
+  // cargoCrane.position.z = -ccDepth;
+
+  // const exh1Depth = 799;
+  // const exh1Plane = getVisiblePlane(exh1Depth, main_camera);
+  // const exh1 = await imageSizeSpriteLoad(exhaust1Texture, basic, new Vector2(0.0, 0.5));
+  // exh1.position.x = -200;
+  // exh1.position.y = -exh1Plane.h;
+  // exh1.position.z = -exh1Depth;
+
+  // bottomSprites.add(cargoCrane, exh1);
+  // cameraMaxScrollY.subscribe({
+  //   next: (y) => {
+  //     bottomSprites.position.y = y;
+  //   },
   // });
 
-  shipGroup.position.y = -500;
-  const shipMesh1 = await airshipParticles(airship1Texture, {
-    count: 3,
-    farOffset: 0,
-    nearOffset: 500,
-    offsetMult: new Vector2(1.0, 1.0),
-    size: 300,
-    speedRange: new Vector2(25.0, 50.0),
-  });
-  const shipMesh2 = await airshipParticles(ballons3Texture, {
-    count: 10,
-    farOffset: 0,
-    nearOffset: 200,
-    offsetMult: new Vector2(1.0, 1.0),
-    size: 100,
-    speedRange: new Vector2(10.0, 30.0),
-  });
-  const shipMesh3 = await airshipParticles(ballons1Texture, {
-    count: 10,
-    farOffset: 600,
-    nearOffset: 100,
-    offsetMult: new Vector2(1.0, 1.0),
-    size: 50,
-    speedRange: new Vector2(10.0, 20.0),
-  });
-  shipGroup.add(shipMesh1, shipMesh2, shipMesh3);
-
-  const ccDepth = 200;
-  const ccPlane = getVisiblePlane(ccDepth, main_camera);
-  const cargoCrane = await imageSizeSpriteLoad(cargoCraneTexture, basic, new Vector2(-0.5, 0.5));
-  cargoCrane.scale.multiplyScalar(0.3);
-  cargoCrane.position.x = ccPlane.w;
-  cargoCrane.position.y = -ccPlane.h;
-  cargoCrane.position.z = -ccDepth;
-
-  const exh1Depth = 799;
-  const exh1Plane = getVisiblePlane(exh1Depth, main_camera);
-  const exh1 = await imageSizeSpriteLoad(exhaust1Texture, basic, new Vector2(0.0, 0.5));
-  exh1.position.x = -200;
-  exh1.position.y = -exh1Plane.h;
-  exh1.position.z = -exh1Depth;
-
-  bottomSprites.add(cargoCrane, exh1);
-  cameraMaxScrollY.subscribe({
-    next: (y) => {
-      bottomSprites.position.y = y;
-    },
-  });
-
-  const fogMesh = await fogParticles(fogTexture);
-  fogMesh.position.x = -200;
-  fogMesh.position.y = -910;
-  fogMesh.position.z = -800;
-
-  preScene.add(noiseQuad, contentGroup, shipGroup, bottomSprites, fogMesh);
+  preScene.add(noiseQuad, contentGroup);
   // --------------------------------------------------------------------------------- Pre render
 
   // --------------------------------------------------------------------------------- Composer
@@ -482,7 +366,7 @@ async function init() {
   const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
-  // composer.addPass(effectPass);
+  composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 
   // why it isn't possible to do in the constructor?

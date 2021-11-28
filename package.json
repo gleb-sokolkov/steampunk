@@ -25,6 +25,7 @@
   "dependencies": {
     "express": "^4.17.1",
     "html2canvas": "^1.3.2",
+    "lodash": "^4.17.21",
     "postprocessing": "^6.23.2",
     "regenerator-runtime": "^0.13.9",
     "rxjs": "^7.4.0",
@@ -75,7 +76,8 @@
     "overrides": [
       {
         "files": [
-          "noiseBG.js"
+          "noiseBG.js",
+          "htmlFactory.js"
         ],
         "rules": {
           "no-use-before-define": "off",
@@ -86,11 +88,12 @@
           "camelcase": "off",
           "no-unused-vars": "off",
           "radix": "off",
-          "prefer-const": "off"
+          "prefer-const": "off",
+          "class-methods-use-this": "off"
         }
       },
       {
-        "files":[
+        "files": [
           "utils.js",
           "static.js",
           "params.js"
@@ -100,7 +103,8 @@
           "no-mixed-operators": "off",
           "no-param-reassign": "off",
           "max-classes-per-file": "off",
-          "no-unused-vars": "off"
+          "no-unused-vars": "off",
+          "no-plusplus": "off"
         }
       }
     ],
@@ -112,6 +116,9 @@
     "env": {
       "node": true,
       "browser": true
+    },
+    "parserOptions": {
+      "ecmaVersion": 2020
     }
   },
   "postcss": {

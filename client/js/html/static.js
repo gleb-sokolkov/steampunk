@@ -1,94 +1,81 @@
+/* eslint-disable class-methods-use-this */
+/* eslint-disable no-useless-constructor */
 import {
   UVMapping, ClampToEdgeWrapping, LinearFilter, CanvasTexture,
-  Vector2,
+  Vector2, BufferAttribute, Mesh, PlaneGeometry, InstancedBufferAttribute,
+  Vector3, ShaderMaterial, InstancedMesh, GLSL3,
 } from 'three';
-import { Subject } from 'rxjs';
 import {
-  viewportToPx, imageSizeSprite, matchViewport, parseViewport,
-  parseHTMLDataset,
+  viewportToPx, imageSizeSprite, parseViewport, parseHTMLDataset,
+  imageSizeSpriteLoad, setupTexture, quadGeometry, getVisiblePlane,
+  getRandomRange,
 } from '../utils';
 import parseHTML from '../parseHTML';
+import {
+  planes, updatableU, shaders,
+} from '../constants';
 
-// export default class HTMLObj {
-//   constructor(toCanvas, camera, maxY) {
-//     this.toCanvas = toCanvas;
-//     this.dataset = toCanvas.dataset;
-//     this.camera = camera;
-//     this.viewport = [];
-//     this.depth = parseViewport(this.dataset.z, camera, 0);
-//     this.datasetSubject = new Subject();
-//     this.params = {};
-
-//     this.dataset = this.parseHTMLDataset();
-//     maxY.subscribe({
-//       next: (y) => {
-//         y = Math.abs(y);
-//         this.viewport.forEach((i) => {
-//           this.dataset[i.key] = viewportToPx(i.val, i.unit, this.depth, this.camera, y);
-//         });
-//         this.datasetSubject.next();
-//       },
-//     });
-//   }
-
-//   async createMesh(config) {
-//     this.params = {
-//       windowWidth: this.dataset.maxWidth - this.dataset.padding,
-//       scale: 1.0,
-//       backgroundColor: null,
-//     };
-//     this.canvas = await parseHTML(this.toCanvas, this.params);
-//     this.texture = new CanvasTexture(
-//       this.canvas, UVMapping, ClampToEdgeWrapping,
-//       ClampToEdgeWrapping, LinearFilter, LinearFilter,
-//     );
-
-//     this.mesh = imageSizeSprite(this.texture, config, new Vector2(...this.dataset.pivot));
-//     this.datasetSubject.subscribe({
-//       next: () => {
-//         [this.mesh.position.x, this.mesh.position.y, this.mesh.position.z] = [
-//           this.dataset.x,
-//           this.dataset.y,
-//           this.dataset.z,
-//         ];
-//       },
-//     });
-
-//     return this.mesh;
-//   }
-
-//   parseHTMLDataset() {
-//     const newDataset = Object.entries({ ...this.dataset })
-//       .reduce((acc, [k, v]) => {
-//         let val = v.split(',').map((str) => {
-//           if (!Number.isNaN(parseFloat(str))) {
-//             const data = matchViewport(str);
-//             if (!data) return +str;
-//             this.viewport.push({ val: data[1], unit: data[3], key: k });
-//             return str;
-//           } return v;
-//         });
-//         val = val.length === 1 ? val[0] : val;
-//         acc[k] = val;
-//         return acc;
-//       }, {});
-//     return newDataset;
-//   }
-// }
-
-export default class HTMLObj {
-  constructor(toCanvas, config, camera) {
+class HTMLObj {
+  constructor(toCanvas, camera) {
     this.toCanvas = toCanvas;
-    this.config = config;
     this.camera = camera;
-    this.depth = parseViewport(toCanvas.dataset.z, camera, 0);
+    this.depth = parseViewport(toCanvas.dataset.pz, camera, 0);
     const { static: s, viewport: v } = parseHTMLDataset(toCanvas.dataset);
     this.static = s;
     this.viewport = v;
   }
 
+  createMesh() {
+    this.mesh = new Mesh(new PlaneGeometry(10, 10));
+  }
+
+  updateViewport(y) {
+    y = Math.abs(y);
+    Object.entries(this.viewport).forEach(([k, v]) => {
+      this.static[k] = viewportToPx(v.val, v.unit, this.depth, this.camera, y);
+    });
+  }
+
+  setPosition(...position) {
+    this.mesh.position.set(...position);
+  }
+
+  setRotation(...rotation) {
+    this.mesh.rotation.set(...rotation);
+  }
+
+  setScale(...scale) {
+    this.mesh.scale.set(...scale);
+  }
+
+  setMatrix() {
+    this.setPosition(this.static.px || 0, this.static.py || 0, this.static.pz || 0);
+    this.setRotation(this.static.rx || 0, this.static.ry || 0, this.static.rz || 0);
+    this.setScale(this.static.sx || 1, this.static.sy || 1, this.static.sz || 1);
+  }
+}
+
+class UpdatableObj extends HTMLObj {
+  constructor(toCanvas, camera) {
+    super(toCanvas, camera);
+    this.config = {
+      ...shaders.basic,
+      uniforms: { ...updatableU, ...shaders.basic.uniforms },
+    };
+  }
+
+  updateAnimation() {
+    this.mesh.material.uniforms.rotation.value = this.static.aRotation || 0;
+  }
+}
+
+export class TextObj extends UpdatableObj {
   async createMesh() {
     const params = {
+      windowWidth: Math.min(
+        this.static.maxWidth,
+        this.toCanvas.clientWidth,
+      ) - this.static.padding,
       backgroundColor: null,
       scale: 1.0,
     };
@@ -106,18 +93,115 @@ export default class HTMLObj {
       new Vector2(this.static.pivotX, this.static.pivotY),
     );
   }
+}
 
-  updateViewport(y) {
-    Object.entries(this.viewport).forEach(([k, v]) => {
-      this.static[k] = viewportToPx(v.val, v.unit, this.depth, this.camera, y);
-    });
+export class SpriteObj extends UpdatableObj {
+  async createMesh() {
+    const pivot = new Vector2(
+      this.static.pivotX,
+      this.static.pivotY,
+    );
+    this.mesh = await imageSizeSpriteLoad(this.static.name, this.config, pivot);
+  }
+}
+
+export class AirshipParticleObj extends HTMLObj {
+  constructor(toCanvas, camera) {
+    super(toCanvas, camera);
+    this.config = shaders.airships;
   }
 
-  setPosition() {
-    [this.mesh.position.x, this.mesh.position.y, this.mesh.position.z] = [
-      this.static.x,
-      this.static.y,
-      this.static.z,
-    ];
+  async createMesh() {
+    const geometry = quadGeometry();
+    const {
+      count, nearOffset, farOffset, offsetMultX, offsetMultY, speedRangeX, speedRangeY, size,
+    } = this.static;
+    const texture = await setupTexture(this.static.name, ClampToEdgeWrapping, ClampToEdgeWrapping);
+    const imgAspect = texture.image.width / texture.image.height;
+
+    const scale = Array(4).fill(null).reduce((acc) => {
+      acc.push(size * imgAspect, size);
+      return acc;
+    }, []);
+    geometry.setAttribute('scale', new BufferAttribute(new Float32Array(scale), 2));
+
+    const offsetWithVel = new InstancedBufferAttribute(new Float32Array(count * 4), 4, false);
+    for (let i = 0; i < count; i++) {
+      const randomVector = new Vector3();
+      randomVector.z = Math.random() * (planes.y - nearOffset - farOffset);
+      const zPlane = getVisiblePlane(nearOffset + randomVector.z, this.camera);
+      zPlane.w *= 2.0;
+      zPlane.h *= 2.0;
+      randomVector.x = (Math.random() - 0.5) * zPlane.w * offsetMultX;
+      randomVector.y = (Math.random() - 0.5) * zPlane.h * offsetMultY;
+
+      const direction = Math.sign(Math.random() - 0.5);
+      const velocity = getRandomRange(new Vector2(speedRangeX, speedRangeY));
+      randomVector.x += zPlane.w * 1.5 * direction;
+
+      offsetWithVel.array[i * 4 + 0] = randomVector.x + size * Math.sign(randomVector.x);
+      offsetWithVel.array[i * 4 + 1] = randomVector.y;
+      offsetWithVel.array[i * 4 + 2] = -randomVector.z - nearOffset;
+      offsetWithVel.array[i * 4 + 3] = velocity;
+    }
+
+    geometry.setAttribute('offsetVel', offsetWithVel);
+    const material = new ShaderMaterial({
+      ...this.config,
+      uniforms: {
+        ...updatableU,
+        tex: { value: texture },
+      },
+      transparent: true,
+      depthTest: true,
+      glslVersion: GLSL3,
+    });
+    this.mesh = new InstancedMesh(geometry, material, count);
+  }
+}
+
+export class FogParticleObj extends HTMLObj {
+  constructor(toCanvas, camera) {
+    super(toCanvas, camera);
+    this.config = shaders.fog;
+  }
+
+  async createMesh() {
+    const geometry = quadGeometry();
+    const {
+      count, angleRangeX, angleRangeY, aSpeedRangeX, aSpeedRangeY,
+      speedRangeX, speedRangeY, scaleRangeX, scaleRangeY,
+    } = this.static;
+    const texture = await setupTexture(this.static.name, ClampToEdgeWrapping, ClampToEdgeWrapping);
+    const texAspect = texture.image.width / texture.image.height;
+    // x - angle, y - velocity, z - angular velocity w - life time
+    const movement = new InstancedBufferAttribute(new Float32Array(count * 3), 3);
+    const scale = new InstancedBufferAttribute(new Float32Array(count * 2), 2);
+    for (let i = 0; i < count; i++) {
+      const dir = Math.sign(Math.random() - 0.5);
+      movement.array[i * 3 + 0] = getRandomRange(new Vector2(angleRangeX, angleRangeY));
+      movement.array[i * 3 + 1] = getRandomRange(new Vector2(speedRangeX, speedRangeY));
+      movement.array[i * 3 + 2] = getRandomRange(new Vector2(aSpeedRangeX, aSpeedRangeY)) * dir;
+
+      const randomScale = getRandomRange(new Vector2(scaleRangeX, scaleRangeY));
+      scale.array[i * 2 + 0] = randomScale * texAspect;
+      scale.array[i * 2 + 1] = randomScale;
+    }
+
+    geometry.setAttribute('movement', movement);
+    geometry.setAttribute('scale', scale);
+    const material = new ShaderMaterial({
+      uniforms: {
+        ...this.config.uniforms,
+        ...updatableU,
+        dif: { value: texture },
+      },
+      vertexShader: this.config.vertexShader,
+      fragmentShader: this.config.fragmentShader,
+      transparent: true,
+      depthTest: true,
+      glslVersion: GLSL3,
+    });
+    this.mesh = new InstancedMesh(geometry, material, count);
   }
 }

@@ -281,55 +281,6 @@ async function init() {
     o.setMatrix();
   });
 
-  // shipGroup.position.y = -500;
-  // const shipMesh1 = await airshipParticles(airship1Texture, {
-  //   count: 3,
-  //   farOffset: 0,
-  //   nearOffset: 500,
-  //   offsetMult: new Vector2(1.0, 1.0),
-  //   size: 300,
-  //   speedRange: new Vector2(25.0, 50.0),
-  // });
-  // const shipMesh2 = await airshipParticles(ballons3Texture, {
-  //   count: 10,
-  //   farOffset: 0,
-  //   nearOffset: 200,
-  //   offsetMult: new Vector2(1.0, 1.0),
-  //   size: 100,
-  //   speedRange: new Vector2(10.0, 30.0),
-  // });
-  // const shipMesh3 = await airshipParticles(ballons1Texture, {
-  //   count: 10,
-  //   farOffset: 600,
-  //   nearOffset: 100,
-  //   offsetMult: new Vector2(1.0, 1.0),
-  //   size: 50,
-  //   speedRange: new Vector2(10.0, 20.0),
-  // });
-  // shipGroup.add(shipMesh1, shipMesh2, shipMesh3);
-
-  // const ccDepth = 200;
-  // const ccPlane = getVisiblePlane(ccDepth, main_camera);
-  // const cargoCrane = await imageSizeSpriteLoad(cargoCraneTexture, basic, new Vector2(-0.5, 0.5));
-  // cargoCrane.scale.multiplyScalar(0.3);
-  // cargoCrane.position.x = ccPlane.w;
-  // cargoCrane.position.y = -ccPlane.h;
-  // cargoCrane.position.z = -ccDepth;
-
-  // const exh1Depth = 799;
-  // const exh1Plane = getVisiblePlane(exh1Depth, main_camera);
-  // const exh1 = await imageSizeSpriteLoad(exhaust1Texture, basic, new Vector2(0.0, 0.5));
-  // exh1.position.x = -200;
-  // exh1.position.y = -exh1Plane.h;
-  // exh1.position.z = -exh1Depth;
-
-  // bottomSprites.add(cargoCrane, exh1);
-  // cameraMaxScrollY.subscribe({
-  //   next: (y) => {
-  //     bottomSprites.position.y = y;
-  //   },
-  // });
-
   preScene.add(noiseQuad, contentGroup);
   // --------------------------------------------------------------------------------- Pre render
 
@@ -366,7 +317,7 @@ async function init() {
   const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
-  composer.addPass(effectPass);
+  // composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 
   // why it isn't possible to do in the constructor?

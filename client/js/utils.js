@@ -32,6 +32,7 @@ function imageSizeSprite(texture, config, pivot = new Vector2(0.0, 0.0)) {
     depthTest: true,
     glslVersion: GLSL3,
   });
+  console.log(material.uniforms);
   const sprite = new Mesh(geometry, material);
   return sprite;
 }

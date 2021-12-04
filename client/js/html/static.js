@@ -65,7 +65,7 @@ class UpdatableObj extends HTMLObj {
   }
 
   updateAnimation() {
-    this.mesh.material.uniforms.rotation.value = this.static.aRotation || 0;
+    this.mesh.material.uniforms.rotation = { value: this.static.aRotation || 0 };
   }
 }
 

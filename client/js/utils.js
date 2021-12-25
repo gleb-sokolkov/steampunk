@@ -22,24 +22,28 @@ function getRandomSet(size, count) {
   return transpose(new Array(count).fill(0).map(calc));
 }
 
-function imageSizeSprite(texture, config, pivot = new Vector2(0.0, 0.0)) {
-  const geometry = new PlaneGeometry(texture.image.width, texture.image.height);
-  geometry.translate(pivot.x * texture.image.width, pivot.y * texture.image.height, 0);
+function imageSizeSprite(textures, config, pivot = new Vector2(0.0, 0.0)) {
+  console.log(textures);
+  const geometry = new PlaneGeometry(textures.dif.image.width, textures.dif.image.height);
+  geometry.translate(pivot.x * textures.dif.image.width, pivot.y * textures.dif.image.height, 0);
   const material = new ShaderMaterial({
     ...config,
-    uniforms: { ...config.uniforms, dif: { value: texture } },
+    uniforms: {
+      ...config.uniforms,
+      dif: { value: textures.dif },
+      light: { value: textures.light },
+    },
     transparent: true,
     depthTest: true,
     glslVersion: GLSL3,
   });
-  console.log(material.uniforms);
   const sprite = new Mesh(geometry, material);
   return sprite;
 }
 
 const setupTexture = (() => {
   const data = {};
-  const images = mapFiles(require.context('../images/', false, /\.(png|jpe?g)$/));
+  const images = mapFiles(require.context('../images/', true, /\.(png|jpe?g)$/));
   return async (
     name, wrapS, wrapT,
     flipY = false,
@@ -49,19 +53,27 @@ const setupTexture = (() => {
     if (data[name]) return data[name];
 
     const path = images[name];
-
-    const texture = await loader.loadAsync(path);
-    [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
-    [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
-    texture.flipY = flipY;
-    data[name] = texture;
-    return texture;
+    console.log(path);
+    const textures = {};
+    if (path.dif) {
+      textures.dif = await loader.loadAsync(path.dif);
+    }
+    if (path.light) {
+      textures.light = await loader.loadAsync(path.light);
+    }
+    Object.values(textures).forEach((texture) => {
+      [texture.wrapS, texture.wrapT] = [wrapS, wrapT];
+      [texture.minFilter, texture.magFilter] = [minFilter, magFilter];
+      texture.flipY = flipY;
+    });
+    data[name] = textures;
+    return textures;
   };
 })();
 
 async function imageSizeSpriteLoad(name, config, pivot) {
-  const texture = await setupTexture(name, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
-  return imageSizeSprite(texture, config, pivot);
+  const textures = await setupTexture(name, ClampToEdgeWrapping, ClampToEdgeWrapping, true);
+  return imageSizeSprite(textures, config, pivot);
 }
 
 const getVisiblePlane = (() => {
@@ -121,11 +133,18 @@ function parseHTMLDataset(dataset) {
 
 function mapFiles(context) {
   const keys = context.keys();
+  const filenameRegex = /([\\/.*]+)([A-Za-z0-9-]+)_([A-Za-z0-9-]+)_.\w+$/;
   const values = keys.map(context);
-  return keys.reduce((accumulator, key, index) => ({
-    ...accumulator,
-    [key.replace(/([\\/.*]+)(\w+).\w+$/, '$2')]: values[index],
-  }), {});
+  return keys.reduce((accumulator, key, index) => {
+    const r = key.match(filenameRegex);
+    return {
+      ...accumulator,
+      [r[2]]: {
+        ...accumulator[r[2]],
+        [r[3]]: values[index],
+      },
+    };
+  }, {});
 }
 
 function quadGeometry() {

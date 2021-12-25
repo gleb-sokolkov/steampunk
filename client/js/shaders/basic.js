@@ -34,7 +34,7 @@ const basic = {
       if(col.a <= 0.05) discard;
       color = col;
       noise = vec4(0.0);
-      colortex2 = vec4(col.a, 0.0, 0.0, 1.0);
+      colortex2 = vec4(col.a, 1.0, 0.0, 1.0);
     }
   `,
 };

@@ -22,14 +22,6 @@ import {
 } from './constants';
 import { HTMLCreator } from './html/htmlFactory';
 
-// images & textures
-import airship1Texture from '../images/airship1_.png';
-import ballons1Texture from '../images/ballons1_.png';
-import ballons3Texture from '../images/ballons3_.png';
-import fogTexture from '../images/fog_.png';
-import cargoCraneTexture from '../images/cargo_crane_.png';
-import exhaust1Texture from '../images/exhaust1_.png';
-
 // --------------------------------------------------------------------------------- Render elements
 const htmlCreator = new HTMLCreator();
 const preScene = new Scene();
@@ -88,98 +80,6 @@ async function genAreaSearchImages() {
     searchImage.onerror = () => reject();
   });
   return [searchImage, areaImage];
-}
-
-async function fogParticles(texturePath) {
-  const geometry = quadGeometry();
-  const count = 10;
-  const angleRange = new Vector2(-Math.PI * 0.05, Math.PI * 0.05);
-  const speedRange = new Vector2(10.0, 40.0);
-  const aSpeedRange = new Vector2(0.0, 0.5);
-  const texture = await setupTexture(texturePath, ClampToEdgeWrapping, ClampToEdgeWrapping);
-  const texAspect = texture.image.width / texture.image.height;
-  const scaleRange = new Vector2(5.0, 20.0);
-  // x - angle, y - velocity, z - angular velocity w - life time
-  const movement = new InstancedBufferAttribute(new Float32Array(count * 3), 3);
-  const scale = new InstancedBufferAttribute(new Float32Array(count * 2), 2);
-  for (let i = 0; i < count; i++) {
-    const dir = Math.sign(Math.random() - 0.5);
-    movement.array[i * 3 + 0] = getRandomRange(angleRange);
-    movement.array[i * 3 + 1] = getRandomRange(speedRange);
-    movement.array[i * 3 + 2] = getRandomRange(aSpeedRange) * dir;
-
-    const randomScale = getRandomRange(scaleRange);
-    scale.array[i * 2 + 0] = randomScale * texAspect;
-    scale.array[i * 2 + 1] = randomScale;
-  }
-
-  geometry.setAttribute('movement', movement);
-  geometry.setAttribute('scale', scale);
-  const material = new ShaderMaterial({
-    uniforms: {
-      ...shaders.fog.uniforms,
-      ...updatableU,
-      dif: { value: texture },
-    },
-    vertexShader: shaders.fog.vertexShader,
-    fragmentShader: shaders.fog.fragmentShader,
-    transparent: true,
-    depthTest: true,
-    glslVersion: GLSL3,
-  });
-  const mesh = new InstancedMesh(geometry, material, count);
-  return mesh;
-}
-
-async function airshipParticles(texturePath, options = airshipOptions) {
-  const geometry = quadGeometry();
-  const {
-    count, nearOffset, farOffset, offsetMult, speedRange, size,
-  } = options;
-  const texture = await setupTexture(texturePath, ClampToEdgeWrapping, ClampToEdgeWrapping);
-  const imgAspect = texture.image.width / texture.image.height;
-
-  const scale = Array(4).fill(null).reduce((acc) => {
-    acc.push(size * imgAspect, size);
-    return acc;
-  }, []);
-  geometry.setAttribute('scale', new BufferAttribute(new Float32Array(scale), 2));
-
-  const offsetWithVel = new InstancedBufferAttribute(new Float32Array(count * 4), 4, false);
-  for (let i = 0; i < count; i++) {
-    const randomVector = new Vector3();
-    randomVector.z = Math.random() * (planes.y - nearOffset - farOffset);
-    const zPlane = getVisiblePlane(nearOffset + randomVector.z, main_camera);
-    zPlane.w *= 2.0;
-    zPlane.h *= 2.0;
-    randomVector.x = (Math.random() - 0.5) * zPlane.w * offsetMult.x;
-    randomVector.y = (Math.random() - 0.5) * zPlane.h * offsetMult.y;
-
-    const direction = Math.sign(Math.random() - 0.5);
-    const velocity = getRandomRange(speedRange);
-    randomVector.x += zPlane.w * 1.5 * direction;
-
-    offsetWithVel.array[i * 4 + 0] = randomVector.x + size * Math.sign(randomVector.x);
-    offsetWithVel.array[i * 4 + 1] = randomVector.y;
-    offsetWithVel.array[i * 4 + 2] = -randomVector.z - nearOffset;
-    offsetWithVel.array[i * 4 + 3] = velocity;
-  }
-
-  geometry.setAttribute('offsetVel', offsetWithVel);
-  const material = new ShaderMaterial({
-    uniforms: {
-      ...shaders.airships.uniforms,
-      ...updatableU,
-      tex: { value: texture },
-    },
-    vertexShader: shaders.airships.vertexShader,
-    fragmentShader: shaders.airships.fragmentShader,
-    transparent: true,
-    depthTest: true,
-    glslVersion: GLSL3,
-  });
-  const mesh = new InstancedMesh(geometry, material, count);
-  return mesh;
 }
 
 function animate() {

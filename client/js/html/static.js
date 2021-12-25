@@ -82,13 +82,14 @@ export class TextObj extends UpdatableObj {
 
     this.canvas = await parseHTML(this.toCanvas, params);
 
-    this.texture = new CanvasTexture(
+    this.textures = {};
+    this.textures.dif = new CanvasTexture(
       this.canvas, UVMapping, ClampToEdgeWrapping,
       ClampToEdgeWrapping, LinearFilter, LinearFilter,
     );
 
     this.mesh = imageSizeSprite(
-      this.texture,
+      this.textures,
       this.config,
       new Vector2(this.static.pivotX, this.static.pivotY),
     );
@@ -116,8 +117,8 @@ export class AirshipParticleObj extends HTMLObj {
     const {
       count, nearOffset, farOffset, offsetMultX, offsetMultY, speedRangeX, speedRangeY, size,
     } = this.static;
-    const texture = await setupTexture(this.static.name, ClampToEdgeWrapping, ClampToEdgeWrapping);
-    const imgAspect = texture.image.width / texture.image.height;
+    const textures = await setupTexture(this.static.name, ClampToEdgeWrapping, ClampToEdgeWrapping);
+    const imgAspect = textures.dif.image.width / textures.dif.image.height;
 
     const scale = Array(4).fill(null).reduce((acc) => {
       acc.push(size * imgAspect, size);
@@ -150,7 +151,7 @@ export class AirshipParticleObj extends HTMLObj {
       ...this.config,
       uniforms: {
         ...updatableU,
-        tex: { value: texture },
+        tex: { value: textures.dif },
       },
       transparent: true,
       depthTest: true,
@@ -172,8 +173,8 @@ export class FogParticleObj extends HTMLObj {
       count, angleRangeX, angleRangeY, aSpeedRangeX, aSpeedRangeY,
       speedRangeX, speedRangeY, scaleRangeX, scaleRangeY,
     } = this.static;
-    const texture = await setupTexture(this.static.name, ClampToEdgeWrapping, ClampToEdgeWrapping);
-    const texAspect = texture.image.width / texture.image.height;
+    const textures = await setupTexture(this.static.name, ClampToEdgeWrapping, ClampToEdgeWrapping);
+    const texAspect = textures.dif.image.width / textures.dif.image.height;
     // x - angle, y - velocity, z - angular velocity w - life time
     const movement = new InstancedBufferAttribute(new Float32Array(count * 3), 3);
     const scale = new InstancedBufferAttribute(new Float32Array(count * 2), 2);
@@ -194,7 +195,7 @@ export class FogParticleObj extends HTMLObj {
       uniforms: {
         ...this.config.uniforms,
         ...updatableU,
-        dif: { value: texture },
+        dif: { value: textures.dif },
       },
       vertexShader: this.config.vertexShader,
       fragmentShader: this.config.fragmentShader,

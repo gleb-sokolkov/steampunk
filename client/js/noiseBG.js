@@ -5,6 +5,8 @@ import {
   InstancedBufferAttribute, BufferAttribute, InstancedMesh,
   ClampToEdgeWrapping, Group, DepthTexture, DepthFormat,
   UnsignedShortType,
+  LinearFilter,
+  LinearMipmapLinearFilter,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
@@ -138,6 +140,8 @@ async function init() {
   renderTarget.texture[0].name = 'color';
   renderTarget.texture[1].name = 'noise';
   renderTarget.texture[2].name = 'colortex2';
+  renderTarget.texture[2].generateMipmaps = true;
+  renderTarget.texture[2].minFilter = LinearMipmapLinearFilter;
 
   const farPlane = getVisiblePlane(planes.y, main_camera);
 

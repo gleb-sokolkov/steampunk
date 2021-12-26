@@ -167,17 +167,18 @@ export default `
     float noise = texture(noiseTexture, uv).r;
     float depth = texture(depthTexture, uv).r;
     float ldepth = linearDepth(depth) / far;
-    vec2 colorTex2 = texture(alphaTexture, uv).rg;
+    float alpha = texture(alphaTexture, uv).r;
+    float light = texture(alphaTexture, uv, 2.0).g;
 
     vec2 muv = (gl_FragCoord.xy - resolution * .5) / resolution.y;
     vec2 suv = vec2(uv.x, uv.y-.35*scrollY);
     float s = noise;
-    float mask = step(colorTex2.r, depth)*pow(1.-colorTex2.r, 8.0);
+    float mask = step(alpha, depth)*pow(1.-alpha, 8.0);
     vec3 col = clouds(muv, s, mask);
     col += getRainColor(suv, s);
     col += getStormColor(suv, s, mask);
-    color += colorTex2.g;
-    col = mix(col, color, colorTex2.r * (1.-ldepth*ldepth));
+    color += light * 10.0;
+    col = mix(col, color, alpha * (1.-ldepth*ldepth));
     col *= 1.-pow(suv.y-.65, 2.0); 
     outputColor = vec4(col, 1.0);
   }

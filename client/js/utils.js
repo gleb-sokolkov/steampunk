@@ -23,7 +23,6 @@ function getRandomSet(size, count) {
 }
 
 function imageSizeSprite(textures, config, pivot = new Vector2(0.0, 0.0)) {
-  console.log(textures);
   const geometry = new PlaneGeometry(textures.dif.image.width, textures.dif.image.height);
   geometry.translate(pivot.x * textures.dif.image.width, pivot.y * textures.dif.image.height, 0);
   const material = new ShaderMaterial({
@@ -53,7 +52,6 @@ const setupTexture = (() => {
     if (data[name]) return data[name];
 
     const path = images[name];
-    console.log(path);
     const textures = {};
     if (path.dif) {
       textures.dif = await loader.loadAsync(path.dif);

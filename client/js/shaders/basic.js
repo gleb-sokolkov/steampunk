@@ -28,13 +28,15 @@ const basic = {
     in vec2 vuv;
 
     uniform sampler2D dif;
+    uniform sampler2D light;
 
     void main() {
       vec4 col = texture(dif, vuv);
+      float light = texture(light, vuv).r;
       if(col.a <= 0.05) discard;
       color = col;
       noise = vec4(0.0);
-      colortex2 = vec4(col.a, 1.0, 0.0, 1.0);
+      colortex2 = vec4(col.a, light, 0.0, 1.0);
     }
   `,
 };

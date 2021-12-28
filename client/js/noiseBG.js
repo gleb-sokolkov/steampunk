@@ -6,8 +6,8 @@ import {
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
-  EffectComposer, EffectPass, DepthOfFieldEffect,
-  SMAAEffect, SavePass, BlurPass, KernelSize,
+  EffectComposer, EffectPass, DepthOfFieldEffect, SMAAEffect,
+  SavePass, BlurPass, KernelSize, BloomEffect,
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
 import { FilmEffect, BGEffect } from './effects';
@@ -29,7 +29,7 @@ const main_camera = new PerspectiveCamera(
   ...planes.toArray(),
 );
 const contentGroup = new Group();
-let renderTarget, noiseQuad, renderer, composer, lightComposer;
+let renderTarget, noiseQuad, renderer, composer;
 
 // --------------------------------------------------------------------------------- Render elements
 
@@ -83,9 +83,6 @@ function animate() {
   renderer.render(preScene, main_camera);
 
   renderer.setRenderTarget(null);
-  lightComposer.render();
-
-  renderer.setRenderTarget(null);
   composer.render();
 
   updatableU.time.value = clock.getElapsedTime();
@@ -135,8 +132,6 @@ async function init() {
   renderTarget.texture[0].name = 'color';
   renderTarget.texture[1].name = 'noise';
   renderTarget.texture[2].name = 'colortex2';
-  renderTarget.texture[2].generateMipmaps = true;
-  renderTarget.texture[2].minFilter = LinearMipmapLinearFilter;
 
   const farPlane = getVisiblePlane(planes.y, main_camera);
 
@@ -189,7 +184,6 @@ async function init() {
     depthTexture: { value: renderTarget.depthTexture },
     noiseTexture: { value: renderTarget.texture[1] },
     alphaTexture: { value: renderTarget.texture[2] },
-    bAlphaTexture: { value: null },
     ...updatableU,
     near: { value: planes.x },
     far: { value: planes.y },
@@ -211,24 +205,13 @@ async function init() {
 
   const smaaEffect = new SMAAEffect(...await genAreaSearchImages());
 
-  const blurPass = new BlurPass();
-
+  const bloomEffect = new BloomEffect();
   // --------------------------------------------------------------------------------- Effects
-
-  lightComposer = new EffectComposer(renderer, { depthBuffer: false });
-  const savePass = new SavePass();
-  const newRenderTarget = Object.create(renderTarget);
-  newRenderTarget.texture = renderTarget.texture[2];
-  lightComposer.autoRenderToScreen = false;
-  lightComposer.inputBuffer = newRenderTarget;
-  lightComposer.addPass(blurPass);
-  lightComposer.addPass(savePass);
-  bgEffect.uniforms.get('bAlphaTexture').value = savePass.renderTarget.texture;
 
   // --------------------------------------------------------------------------------- Composer
   composer = new EffectComposer(renderer, { depthBuffer: false });
   const geometry = new EffectPass(main_camera, bgEffect);
-  const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
+  const effectPass = new EffectPass(main_camera, smaaEffect, bloomEffect, dofEffect, filmEffect);
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
   composer.addPass(effectPass);
@@ -265,14 +248,14 @@ async function init() {
   const dofFolder = gui.addFolder('DOFPass');
   dofFolder.add(dofEffect, 'bokehScale', dofProps.bokehScale.min, dofProps.bokehScale.max);
 
-  const blurFolder = gui.addFolder('BlurLight');
-  blurFolder.add(blurPass, 'kernelSize', KernelSize).name('kernel size').setValue(KernelSize.MEDIUM);
-  blurFolder.add(blurPass.resolution, 'width', {
-    very_small: 64, small: 128, medium: 256, large: 512,
-  }).name('kernel size').setValue(256);
-  blurFolder.add(blurPass.resolution, 'height', {
-    very_small: 64, small: 128, medium: 256, large: 512,
-  }).name('kernel size').setValue(256);
+  const bloomFolder = gui.addFolder('BloomPass');
+  bloomFolder.add(bloomEffect.blurPass, 'kernelSize', KernelSize).name('kernel size').setValue(KernelSize.MEDIUM);
+  bloomFolder.add(bloomEffect.resolution, 'width', [240, 360, 480, 720, 1080]).name('resolution').setValue(360)
+    .onChange((value) => {
+      bloomEffect.resolution.width = parseInt(value);
+      bloomEffect.resolution.height = parseInt(value);
+    });
+  bloomFolder.add(bloomEffect, 'intensity', 0, 5).name('intensity').setValue(1.7);
   // --------------------------------------------------------------------------------- GUI
 
   animate();

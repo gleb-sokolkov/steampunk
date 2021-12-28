@@ -39,7 +39,7 @@ const dofProps = {
   focusDistance: 0.5,
   focalLength: 0.1,
   bokehScale: {
-    d: 2.5,
+    d: 4.0,
     min: 0.0,
     max: 5.0,
   },

@@ -1,26 +1,22 @@
 import {
   FloatType, GLSL3, Mesh, NearestFilter, PerspectiveCamera,
   PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, Vector2,
-  Vector3, WebGLMultipleRenderTargets, WebGLRenderer,
-  InstancedBufferAttribute, BufferAttribute, InstancedMesh,
-  ClampToEdgeWrapping, Group, DepthTexture, DepthFormat,
-  UnsignedShortType,
-  LinearFilter,
-  LinearMipmapLinearFilter,
+  WebGLMultipleRenderTargets, WebGLRenderer, Group,
+  DepthTexture, DepthFormat, UnsignedShortType, LinearMipmapLinearFilter,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
   EffectComposer, EffectPass, DepthOfFieldEffect,
-  SMAAEffect,
+  SMAAEffect, SavePass, BlurPass, KernelSize,
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
 import { FilmEffect, BGEffect } from './effects';
 import {
-  setupTexture, getVisiblePlane, getRandomRange, quadGeometry,
+  getVisiblePlane,
 } from './utils';
 import {
   clock, planes, fov, cameraMaxScrollY, scrollSpeed,
-  dofProps, filmProps, airshipOptions, updatableU, shaders,
+  dofProps, filmProps, updatableU, shaders,
 } from './constants';
 import { HTMLCreator } from './html/htmlFactory';
 
@@ -32,13 +28,9 @@ const main_camera = new PerspectiveCamera(
   window.innerWidth / window.innerHeight,
   ...planes.toArray(),
 );
-const shipGroup = new Group();
-const bottomSprites = new Group();
 const contentGroup = new Group();
-const canvasObjs = [];
-let renderTarget; let renderer; let composer;
-let noiseQuad;
-let bgEffect;
+let renderTarget, noiseQuad, renderer, composer, lightComposer;
+
 // --------------------------------------------------------------------------------- Render elements
 
 function onWindowResize() {
@@ -89,6 +81,9 @@ function animate() {
   renderer.setClearColor(0xffffff, 1.0);
   renderer.clear();
   renderer.render(preScene, main_camera);
+
+  renderer.setRenderTarget(null);
+  lightComposer.render();
 
   renderer.setRenderTarget(null);
   composer.render();
@@ -188,14 +183,13 @@ async function init() {
   preScene.add(noiseQuad, contentGroup);
   // --------------------------------------------------------------------------------- Pre render
 
-  // --------------------------------------------------------------------------------- Composer
-  composer = new EffectComposer(renderer, { depthBuffer: false });
-
-  bgEffect = new BGEffect(Object.entries({
+  // --------------------------------------------------------------------------------- Effects
+  const bgEffect = new BGEffect(Object.entries({
     sceneTexture: { value: renderTarget.texture[0] },
     depthTexture: { value: renderTarget.depthTexture },
     noiseTexture: { value: renderTarget.texture[1] },
     alphaTexture: { value: renderTarget.texture[2] },
+    bAlphaTexture: { value: null },
     ...updatableU,
     near: { value: planes.x },
     far: { value: planes.y },
@@ -217,11 +211,27 @@ async function init() {
 
   const smaaEffect = new SMAAEffect(...await genAreaSearchImages());
 
+  const blurPass = new BlurPass();
+
+  // --------------------------------------------------------------------------------- Effects
+
+  lightComposer = new EffectComposer(renderer, { depthBuffer: false });
+  const savePass = new SavePass();
+  const newRenderTarget = Object.create(renderTarget);
+  newRenderTarget.texture = renderTarget.texture[2];
+  lightComposer.autoRenderToScreen = false;
+  lightComposer.inputBuffer = newRenderTarget;
+  lightComposer.addPass(blurPass);
+  lightComposer.addPass(savePass);
+  bgEffect.uniforms.get('bAlphaTexture').value = savePass.renderTarget.texture;
+
+  // --------------------------------------------------------------------------------- Composer
+  composer = new EffectComposer(renderer, { depthBuffer: false });
   const geometry = new EffectPass(main_camera, bgEffect);
   const effectPass = new EffectPass(main_camera, smaaEffect, dofEffect, filmEffect);
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
-  // composer.addPass(effectPass);
+  composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 
   // why it isn't possible to do in the constructor?
@@ -254,6 +264,15 @@ async function init() {
 
   const dofFolder = gui.addFolder('DOFPass');
   dofFolder.add(dofEffect, 'bokehScale', dofProps.bokehScale.min, dofProps.bokehScale.max);
+
+  const blurFolder = gui.addFolder('BlurLight');
+  blurFolder.add(blurPass, 'kernelSize', KernelSize).name('kernel size').setValue(KernelSize.MEDIUM);
+  blurFolder.add(blurPass.resolution, 'width', {
+    very_small: 64, small: 128, medium: 256, large: 512,
+  }).name('kernel size').setValue(256);
+  blurFolder.add(blurPass.resolution, 'height', {
+    very_small: 64, small: 128, medium: 256, large: 512,
+  }).name('kernel size').setValue(256);
   // --------------------------------------------------------------------------------- GUI
 
   animate();

@@ -89,7 +89,10 @@
           "no-unused-vars": "off",
           "radix": "off",
           "prefer-const": "off",
-          "class-methods-use-this": "off"
+          "class-methods-use-this": "off",
+          "prefer-destructuring": "off",
+          "one-var": "off",
+          "one-var-declaration-per-line": "off"
         }
       },
       {

@@ -3,6 +3,7 @@ export default `
   uniform sampler2D noiseTexture;
   uniform sampler2D depthTexture;
   uniform sampler2D alphaTexture;
+  uniform sampler2D bAlphaTexture;
 
   uniform float time;
   uniform vec2 resolution;
@@ -81,7 +82,7 @@ export default `
     float sun = smoothstep(0.05, 0.02, sp) * m;
     float sunFlare = smoothstep(0.7, 0.0, sp);
 
-    return color + (sunColor*0.4*sunFlare + sun*sunColor)*s*smoothstep(.5, .0, scrollY)*.7;
+    return color + (sunColor*0.4*sunFlare + sun*sunColor)*s*smoothstep(.5, .0, scrollY)*.5;
   }
 
   float tshape(vec2 uv) 
@@ -168,7 +169,8 @@ export default `
     float depth = texture(depthTexture, uv).r;
     float ldepth = linearDepth(depth) / far;
     float alpha = texture(alphaTexture, uv).r;
-    float light = texture(alphaTexture, uv, 2.0).g;
+    float light = texture(alphaTexture, uv).g;
+    float bLight = texture(bAlphaTexture, uv).g;
 
     vec2 muv = (gl_FragCoord.xy - resolution * .5) / resolution.y;
     vec2 suv = vec2(uv.x, uv.y-.35*scrollY);
@@ -177,7 +179,7 @@ export default `
     vec3 col = clouds(muv, s, mask);
     col += getRainColor(suv, s);
     col += getStormColor(suv, s, mask);
-    color += light * 10.0;
+    color += dot(vec2(light, bLight),vec2(2.5));
     col = mix(col, color, alpha * (1.-ldepth*ldepth));
     col *= 1.-pow(suv.y-.65, 2.0); 
     outputColor = vec4(col, 1.0);

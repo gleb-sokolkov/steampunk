@@ -12,7 +12,7 @@ export default `
 
   const vec3 skyUp = vec3(0.7, 0.75, 0.8);
   const vec3 skyDown = vec3(0.12, 0.14, 0.2);
-  const vec3 sunColor = vec3(1.0, 0.75, 0.65);
+  const vec3 sunColor = vec3(1.0, 0.5, 0.35);
   const vec3 tColor = vec3(.85, .9, 1.);
   const float twidth = 0.02;
 

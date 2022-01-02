@@ -151,7 +151,8 @@ export class AirshipParticleObj extends HTMLObj {
       ...this.config,
       uniforms: {
         ...updatableU,
-        tex: { value: textures.dif },
+        dif: { value: textures.dif },
+        light: { value: textures.light },
       },
       transparent: true,
       depthTest: true,

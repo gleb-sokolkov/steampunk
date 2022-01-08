@@ -15,3 +15,28 @@ html, body {
   transform: translate(-100%);
   z-index: -1;
 }
+
+.h1 {
+  font-family: 'Morgan';
+  font-size: 10rem;
+  text-shadow: 0 0 0.2rem black;
+}
+
+.main-text {
+  --size: 35rem;
+  font-size: 5rem;
+}
+
+.round-text {
+  width: var(--size);
+  aspect-ratio: 1;
+  position: relative;
+
+  &__item {
+    position: absolute;
+    left: 50%;
+    transform: rotate(0deg) translate(-50%, 0%);
+    transform-origin: 0 calc(var(--size) * 0.5); 
+  }
+}
+

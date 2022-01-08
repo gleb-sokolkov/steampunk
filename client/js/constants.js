@@ -36,8 +36,8 @@ const scrollSpeed = {
   },
 };
 const dofProps = {
-  focusDistance: 0.5,
-  focalLength: 0.1,
+  focusDistance: 0.6,
+  focalLength: 0.3,
   bokehScale: {
     d: 4.0,
     min: 0.0,

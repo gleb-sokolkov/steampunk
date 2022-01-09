@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
   min-height: 100vh;
   position: relative;
 }
@@ -17,13 +18,12 @@ html, body {
 }
 
 .h1 {
-  font-family: 'Morgan';
-  font-size: 10rem;
+  font-family: "Morgan";
   text-shadow: 0 0 0.2rem black;
 }
 
 .main-text {
-  --size: 35rem;
+  --size: 700px;
   font-size: 5rem;
 }
 
@@ -31,12 +31,22 @@ html, body {
   width: var(--size);
   aspect-ratio: 1;
   position: relative;
+  z-index: 1;
 
   &__item {
     position: absolute;
+    line-height: 1;
     left: 50%;
-    transform: rotate(0deg) translate(-50%, 0%);
-    transform-origin: 0 calc(var(--size) * 0.5); 
+    transform-origin: 0 calc(var(--size) * 0.5);
   }
 }
 
+.lead-info {
+  font-size: 2rem;
+  font-family: "PLBardamu";
+  background: $black;
+  color: $white;
+  padding: 1.5rem;
+  border: 0.5rem dashed $black;
+  background-clip: padding-box;
+}

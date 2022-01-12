@@ -217,17 +217,6 @@ async function init() {
   composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 
-  // why it isn't possible to do in the constructor?
-  // shadePass.uniforms.shadetex.value = await setupTexture(
-  //   shadeTexture,
-  //   THREE.RepeatWrapping,
-  //   THREE.ClampToEdgeWrapping,
-  //   THREE.LinearFilter,
-  //   THREE.LinearFilter,
-  // );
-  // Use this to setup shader's uniforms
-  // ShaderPass.uniforms;
-
   // --------------------------------------------------------------------------------- Window events
   window.addEventListener('resize', onWindowResize);
   window.addEventListener('scroll', onWindowScroll);

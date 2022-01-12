@@ -50,7 +50,6 @@ const setupTexture = (() => {
     magFilter = NearestFilter,
   ) => {
     if (data[name]) return data[name];
-
     const path = images[name];
     const textures = {};
     if (path.dif) {

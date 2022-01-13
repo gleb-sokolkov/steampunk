@@ -3,7 +3,7 @@
 import {
   UVMapping, ClampToEdgeWrapping, LinearFilter, CanvasTexture,
   Vector2, BufferAttribute, Mesh, PlaneGeometry, InstancedBufferAttribute,
-  Vector3, ShaderMaterial, InstancedMesh, GLSL3,
+  Vector3, ShaderMaterial, InstancedMesh, GLSL3, RepeatWrapping, Vector4,
 } from 'three';
 import {
   viewportToPx, imageSizeSprite, parseViewport, parseHTMLDataset,
@@ -64,8 +64,18 @@ class UpdatableObj extends HTMLObj {
     };
   }
 
-  updateAnimation() {
+  async updateAnimation() {
     this.mesh.material.uniforms.rotation = { value: this.static.aRotation || 0 };
+    this.mesh.material.uniforms.jitterMult = { value: this.static.jitterMult || 0 };
+    this.mesh.material.uniforms.jitterSpeed = { value: this.static.jitterSpeed || 0 };
+    this.mesh.material.uniforms.jitterVX = {
+      value: new Vector2(Math.random() * 2 - 1, Math.random() * 2 - 1).normalize(),
+    };
+    this.mesh.material.uniforms.jitterVY = {
+      value: new Vector2(Math.random() * 2 - 1, Math.random() * 2 - 1).normalize(),
+    };
+    const noise = await setupTexture('perlin', RepeatWrapping, RepeatWrapping);
+    this.mesh.material.uniforms.noise = { value: noise.dif };
   }
 }
 

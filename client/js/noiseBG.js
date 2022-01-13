@@ -2,12 +2,12 @@ import {
   FloatType, GLSL3, Mesh, NearestFilter, PerspectiveCamera,
   PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, Vector2,
   WebGLMultipleRenderTargets, WebGLRenderer, Group,
-  DepthTexture, DepthFormat, UnsignedShortType, LinearMipmapLinearFilter,
+  DepthTexture, DepthFormat, UnsignedShortType,
 } from 'three';
 import { WEBGL } from 'three/examples/jsm/WebGL';
 import {
   EffectComposer, EffectPass, DepthOfFieldEffect, SMAAEffect,
-  SavePass, BlurPass, KernelSize, BloomEffect,
+  KernelSize, BloomEffect,
 } from 'postprocessing';
 import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
 import { FilmEffect, BGEffect } from './effects';

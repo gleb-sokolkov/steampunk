@@ -18,10 +18,8 @@
             data-py="50"
             data-pz="-500"
         >
-        <div style="position: relative;">
-            <div class="round-text main-text h1" data-text="round" data-step-size="20">
-                Steampunk
-            </div>
+        <div class="round-text main-text h1" data-text="round" data-step-size="20">
+            Steampunk
         </div>
         </div>
         <div
@@ -34,7 +32,7 @@
             data-py="0"
             data-pz="-500"
         >
-            <div class="lead-info">
+            <div class="info info_theme_lead">
                 Steampunk is a sub-genre of science fiction, alternate history, and speculative fiction that came into prominence during
                 the late 1980's and early 1990's. Specifically, steampunk involves an era or world where steam power is still widely
                 used, typically the Victorian Era and the Edwardian Era, that incorporates prominent elements of science fiction and
@@ -70,7 +68,6 @@
         <!-- HEADING -->
 
         <!-- BUILDINGS -->
-
         <!-- COMPLEX1 -->
         <div
             data-type="sprite"
@@ -78,6 +75,8 @@
             data-px="0"
             data-py="-150"
             data-pz="-600"
+            data-jitter-speed="0.1"
+            data-jitter-mult="10.0"
         ></div>
         <div
             data-type="sprite"
@@ -132,6 +131,8 @@
             data-sx="0.5"
             data-sy="0.5"
             data-sz="1.0"
+            data-jitter-speed="0.05"
+            data-jitter-mult="30.0"
         ></div>
         <div
             data-type="sprite"
@@ -160,6 +161,56 @@
             data-a-rotation="-2.0"
         ></div>
         <!-- COMPLEX2 -->
+
+        <!-- TEXT2 -->
+        <div
+            data-type="text"
+            data-max-width="700"
+            data-padding="40"
+            data-pivot-x="0.0"
+            data-pivot-y="-0.5"
+            data-px="0"
+            data-py="-1000"
+            data-pz="-500"
+        >
+            <div class="info info_theme_light">
+                Steampunk is often associated with cyberpunk, from which it is derived. They have considerable influence on each
+                other and share a similar fan base, but steampunk developed into a separable movement. Apart from time period and
+                level of technology, the main difference is that steampunk settings tend to be less dystopian. Steampunk is
+                described as "full of wonder" and as "functional, logical, and very British". Steampunk stories are often romantic
+                and peppered with historical references and brewing rebellions.
+            </div>
+        </div>
+        <!-- TEXT2 -->
+
+        <!-- COMPLEX3 -->
+        <div
+            data-type="sprite"
+            data-name="flying-complex3"
+            data-pivot-x="0.0"
+            data-pivot-y="0.5"
+            data-px="200"
+            data-py="-1500"
+            data-pz="-700"
+            data-jitter-speed="0.05"
+            data-jitter-mult="30.0"
+        ></div>
+        <div
+            data-type="sprite"
+            data-name="propeller1"
+            data-pivot-x="0.0"
+            data-pivot-y="0.0"
+            data-px="200"
+            data-py="-1350"
+            data-pz="-695"
+            data-sx="1.5"
+            data-sy="1.5"
+            data-sz="1.0"
+            data-a-rotation="4.0"
+        ></div>
+        <!-- COMPLEX3 -->
+        
+        <!-- GROUND -->
         <div 
             data-type="sprite"
             data-name="facility1"
@@ -197,6 +248,7 @@
             data-scale-range-x="5" 
             data-scale-range-y="20" 
         ></div>
+        <!-- GROUND -->
         <!-- BUILDINGS -->
 
         <!-- AIRCRAFT -->
@@ -204,13 +256,13 @@
             data-type="airships"
             data-name="airship2"
             data-px="0"
-            data-py="0"
+            data-py="-25vy"
             data-pz="0"
             data-count="5"
             data-near-offset="500" 
             data-far-offset="50" 
             data-offset-mult-x="1"
-            data-offset-mult-y="1"
+            data-offset-mult-y="1.5"
             data-speed-range-x="25", 
             data-speed-range-y="50", 
             data-size="500"
@@ -219,28 +271,28 @@
             data-type="airships"
             data-name="ballons1"
             data-px="0"
-            data-py="0"
+            data-py="-25vy"
             data-pz="0"
-            data-count="10"
+            data-count="5"
             data-near-offset="100" 
             data-far-offset="600" 
             data-offset-mult-x="1"
-            data-offset-mult-y="1"
+            data-offset-mult-y="1.5"
             data-speed-range-x="10" 
             data-speed-range-y="20"
-            data-size="50"
+            data-size="100"
         ></div>
         <div
             data-type="airships"
             data-name="ballons3"
             data-px="0"
-            data-py="0"
+            data-py="-25vy"
             data-pz="0"
             data-count="10"
             data-near-offset="200" 
             data-far-offset="50" 
             data-offset-mult-x="1"
-            data-offset-mult-y="1"
+            data-offset-mult-y="1.5"
             data-speed-range-x="10" 
             data-speed-range-y="30"
             data-size="100"

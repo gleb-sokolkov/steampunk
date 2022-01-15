@@ -43,24 +43,20 @@ body {
 
 .info {
   font-family: "PLBardamu";
-
+  font-size: 1.7rem;
+  background: $black;
+  color: $white;
+  
   &_theme_lead {
-    font-size: 1.7rem;
-    background: $black;
-    color: $white;
     padding: 1.5rem;
     border: 0.5rem dashed $black;
     background-clip: padding-box;
   }
-
-  &_theme_light {
-    background: $light;
-    color: $dark;
-    font-size: 1.7rem;
-    padding: 2rem;
-    border-radius: 1rem;
-    border: 1rem solid $black;
-    background-clip: padding-box;
+  
+  &_theme_secondary {
+    background: transparent;
+    color: $black;
+    padding: 1em;
+    text-shadow: 0 0 0.05em $black;
   }
-
 }

@@ -55,7 +55,7 @@ const basic = {
     void main() {
       vec4 col = texture(dif, vuv);
       float light = texture(light, vuv).r;
-      if(col.a <= 0.05) discard;
+      if(col.a <= 0.1) discard;
       color = col;
       noise = vec4(0.0);
       colortex2 = vec4(col.a, light, 0.0, 1.0);

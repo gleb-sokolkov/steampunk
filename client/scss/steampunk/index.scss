@@ -23,11 +23,13 @@ body {
 }
 
 .main-text {
-  --size: 550px;
+  --max-size: 550px;
+  --min-size: 400px;
   font-size: 4rem;
 }
 
 .round-text {
+  --size: var(--max-size);
   width: var(--size);
   aspect-ratio: 1;
   position: relative;
@@ -38,6 +40,10 @@ body {
     line-height: 1;
     left: 50%;
     transform-origin: 0 calc(var(--size) * 0.5);
+  }
+
+  @media (max-width: $sm) {
+    --size: var(--min-size);
   }
 }
 

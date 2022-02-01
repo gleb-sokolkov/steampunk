@@ -8,11 +8,11 @@ import {
 import {
   viewportToPx, imageSizeSprite, parseViewport, parseHTMLDataset,
   imageSizeSpriteLoad, setupTexture, quadGeometry, getVisiblePlane,
-  getRandomRange,
+  getRandomRange, clampSpread,
 } from '../utils';
 import parseHTML from '../parseHTML';
 import {
-  planes, updatableU, shaders,
+  planes, updatableU, shaders, maxX,
 } from '../constants';
 
 class HTMLObj {
@@ -32,7 +32,7 @@ class HTMLObj {
   updateViewport(y) {
     y = Math.abs(y);
     Object.entries(this.viewport).forEach(([k, v]) => {
-      this.static[k] = viewportToPx(v.val, v.unit, this.depth, this.camera, y);
+      this.static[k] = viewportToPx(v.val, v.unit, this.depth, this.camera, maxX, y);
     });
   }
 
@@ -44,8 +44,10 @@ class HTMLObj {
     this.mesh.rotation.set(...rotation);
   }
 
-  setScale(...scale) {
-    this.mesh.scale.set(...scale);
+  setScale(x, y, z) {
+    x *= clampSpread(-1, this.static.flipX || 1, 1);
+    y *= clampSpread(-1, this.static.flipY || 1, 1);
+    this.mesh.scale.set(x, y, z);
   }
 
   setMatrix() {

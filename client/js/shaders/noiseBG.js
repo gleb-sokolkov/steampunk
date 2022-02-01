@@ -53,7 +53,7 @@ const noiseBG = {
     }
 
     #define NUM_OCTAVES 3
-    const float size = 2.5;
+    const float size = 2.0;
     const vec2 speed = vec2(0.25, 0.1);
 
     float fbm(vec2 x) 
@@ -73,10 +73,9 @@ const noiseBG = {
 
     float getS(vec2 uv, vec2 muv) 
     {
-      float invY = 1.-uv.y;
-      float t = fbm(muv*size*invY)*.25+.75;
+      float t = fbm(muv*size)*.25+.75;
       t = mix(t, 0.0, uv.y-1.0);
-      return pow(t, 2.*invY)*(uv.y+.25)*(1.-pow(uv.y-.65, 2.));
+      return pow(t, 2.-2.*uv.y)*(uv.y+.25)*(1.-pow(uv.y-.65, 2.));
     }
 
     void main()

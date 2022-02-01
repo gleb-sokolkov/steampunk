@@ -75,7 +75,9 @@
     "extends": "airbnb-base",
     "overrides": [
       {
-        "files": ["*.js"],
+        "files": [
+          "*.js"
+        ],
         "rules": {
           "class-methods-use-this": "off",
           "no-param-reassign": "off"

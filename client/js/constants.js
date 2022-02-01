@@ -9,9 +9,10 @@ import fog from './shaders/fog';
 import basic from './shaders/basic';
 
 const clock = new Clock();
-const planes = new Vector2(0.1, 1000);
+const planes = new Vector2(0.1, 5000);
 const fov = 75;
 const cameraMaxScrollY = new BehaviorSubject(0);
+const maxX = 3000;
 const scrollSpeed = {
   d: 1.0,
   get D() {
@@ -36,8 +37,8 @@ const scrollSpeed = {
   },
 };
 const dofProps = {
-  focusDistance: 0.5,
-  focalLength: 0.25,
+  focusDistance: 0.1,
+  focalLength: 0.05,
   bokehScale: {
     d: 4.0,
     min: 0.0,
@@ -111,4 +112,5 @@ export {
   updatableU,
   defaultU,
   shaders,
+  maxX,
 };

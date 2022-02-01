@@ -6,6 +6,15 @@ import {
 
 const loader = new TextureLoader();
 
+function clamp(min, value, max) {
+  return Math.min(Math.max(min, value), max);
+}
+
+function clampSpread(min, value, max) {
+  const o = (max + min) * 0.5;
+  return value >= o ? max : min;
+}
+
 function getRandomRange(vec) {
   return Math.random() * (vec.y - vec.x) + vec.x;
 }
@@ -88,11 +97,11 @@ function matchViewport(str) {
   return str.match(/^(-?\d+([.]\d+)?)(vx|vy|vz)$/);
 }
 
-function viewportToPx(val, unit, depth, cam, maxY) {
+function viewportToPx(val, unit, depth, cam, maxX, maxY) {
   const plane = getVisiblePlane(Math.abs(depth), cam);
   val *= 0.01;
   if (unit === 'vx') {
-    return val * plane.w * 2.0;
+    return clamp(-maxX, val * plane.w * 2.0, maxX);
   } if (unit === 'vy') {
     return val * (plane.h + maxY);
   } if (unit === 'vz') {
@@ -169,5 +178,5 @@ function quadGeometry() {
 export {
   getRandomRange, transpose, getRandomSet, imageSizeSprite, setupTexture,
   imageSizeSpriteLoad, viewportToPx, parseHTMLDataset, getVisiblePlane,
-  matchViewport, parseViewport, mapFiles, quadGeometry,
+  matchViewport, parseViewport, mapFiles, quadGeometry, clamp, clampSpread,
 };

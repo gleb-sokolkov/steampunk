@@ -1,5 +1,6 @@
 const express = require('express');
 const config = require('./config');
+
 const server = express();
 
 server.use(express.static(config.paths.common.dirnames.public));

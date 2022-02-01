@@ -214,7 +214,7 @@ async function init() {
   const effectPass = new EffectPass(main_camera, smaaEffect, bloomEffect, dofEffect, filmEffect);
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
-  composer.addPass(effectPass);
+  // composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 
   // --------------------------------------------------------------------------------- Window events

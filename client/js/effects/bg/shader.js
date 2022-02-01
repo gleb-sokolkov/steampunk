@@ -178,7 +178,7 @@ export default `
     col += getRainColor(suv, s);
     col += getStormColor(suv, s, mask);
     color += light * 5.0;
-    col = mix(col, color, alpha * (1.-ldepth*ldepth));
+    col = mix(col, color, alpha * exp(-ldepth*5.0));
     col *= 1.-pow(suv.y-.65, 2.0); 
     outputColor = vec4(col, 1.0);
   }

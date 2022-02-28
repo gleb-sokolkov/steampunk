@@ -4,12 +4,12 @@ import {
   WebGLMultipleRenderTargets, WebGLRenderer, Group,
   DepthTexture, DepthFormat, UnsignedShortType,
 } from 'three';
-import { WEBGL } from 'three/examples/jsm/WebGL';
+import WebGL from 'three/examples/jsm/capabilities/WebGL';
 import {
   EffectComposer, EffectPass, DepthOfFieldEffect, SMAAEffect,
   KernelSize, BloomEffect,
 } from 'postprocessing';
-import { GUI } from 'three/examples/jsm/libs/dat.gui.module';
+import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min';
 import { FilmEffect, BGEffect } from './effects';
 import {
   getVisiblePlane,
@@ -91,8 +91,8 @@ function animate() {
 }
 
 async function init() {
-  if (WEBGL.isWebGL2Available === false) {
-    document.body.insertBefore(WEBGL.getWebGL2ErrorMessage(), document.body.firstChild);
+  if (WebGL.isWebGL2Available === false) {
+    document.body.insertBefore(WebGL.getWebGL2ErrorMessage(), document.body.firstChild);
     return;
   }
 
@@ -214,7 +214,7 @@ async function init() {
   const effectPass = new EffectPass(main_camera, smaaEffect, bloomEffect, dofEffect, filmEffect);
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
-  // composer.addPass(effectPass);
+  composer.addPass(effectPass);
   // --------------------------------------------------------------------------------- Composer
 
   // --------------------------------------------------------------------------------- Window events

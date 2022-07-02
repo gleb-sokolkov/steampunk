@@ -19,6 +19,7 @@ import {
   dofProps, filmProps, updatableU, shaders,
 } from './constants';
 import { HTMLCreator } from './html/htmlFactory';
+import BottomVignetteEffect from './effects/bottom-vignette';
 
 // --------------------------------------------------------------------------------- Render elements
 const htmlCreator = new HTMLCreator();
@@ -189,6 +190,10 @@ async function init() {
     far: { value: planes.y },
   }));
 
+  const bottomVignetteEffect = new BottomVignetteEffect(Object.entries({
+    ...updatableU,
+  }));
+
   const dofEffect = new DepthOfFieldEffect(main_camera, {
     focusDistance: dofProps.focusDistance,
     focalLength: dofProps.focalLength,
@@ -211,7 +216,14 @@ async function init() {
   // --------------------------------------------------------------------------------- Composer
   composer = new EffectComposer(renderer, { depthBuffer: false });
   const geometry = new EffectPass(main_camera, bgEffect);
-  const effectPass = new EffectPass(main_camera, smaaEffect, bloomEffect, dofEffect, filmEffect);
+  const effectPass = new EffectPass(
+    main_camera,
+    smaaEffect,
+    bloomEffect,
+    dofEffect,
+    bottomVignetteEffect,
+    filmEffect,
+  );
   effectPass.setDepthTexture(renderTarget.depthTexture);
   composer.addPass(geometry);
   composer.addPass(effectPass);

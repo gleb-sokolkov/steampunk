@@ -62,8 +62,12 @@ class UpdatableObj extends HTMLObj {
     super(toCanvas, camera);
     this.config = {
       ...shaders.basic,
-      uniforms: { ...updatableU, ...shaders.basic.uniforms },
+      uniforms: {
+        ...updatableU,
+        ...shaders.basic.uniforms,
+      },
     };
+    this.setLightMult(this.static.lightMult);
   }
 
   async updateAnimation() {
@@ -78,6 +82,10 @@ class UpdatableObj extends HTMLObj {
     };
     const noise = await setupTexture('perlin', RepeatWrapping, RepeatWrapping);
     this.mesh.material.uniforms.noise = { value: noise.dif };
+  }
+
+  setLightMult(mult) {
+    this.config.uniforms.lightMult = mult ? { value: mult } : this.config.uniforms.lightMult;
   }
 }
 
@@ -122,6 +130,7 @@ export class AirshipParticleObj extends HTMLObj {
   constructor(toCanvas, camera) {
     super(toCanvas, camera);
     this.config = shaders.airships;
+    this.setLightMult(this.static.lightMult);
   }
 
   async createMesh() {
@@ -171,6 +180,10 @@ export class AirshipParticleObj extends HTMLObj {
       glslVersion: GLSL3,
     });
     this.mesh = new InstancedMesh(geometry, material, count);
+  }
+
+  setLightMult(mult) {
+    this.config.uniforms.lightMult = mult ? { value: mult } : this.config.uniforms.lightMult;
   }
 }
 

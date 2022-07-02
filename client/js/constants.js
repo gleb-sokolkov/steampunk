@@ -1,5 +1,5 @@
 import {
-  Clock, Vector2,
+  Clock, Vector2, TextureLoader,
 } from 'three';
 import { BehaviorSubject } from 'rxjs';
 
@@ -9,6 +9,7 @@ import fog from './shaders/fog';
 import basic from './shaders/basic';
 
 const clock = new Clock();
+const loader = new TextureLoader();
 const planes = new Vector2(0.1, 5000);
 const fov = 75;
 const cameraMaxScrollY = new BehaviorSubject(0);
@@ -113,4 +114,5 @@ export {
   defaultU,
   shaders,
   maxX,
+  loader,
 };

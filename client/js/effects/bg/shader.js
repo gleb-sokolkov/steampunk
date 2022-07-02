@@ -168,7 +168,6 @@ export default `
     float depth = texture(depthTexture, uv).r;
     float ldepth = linearDepth(depth) / far;
     float alpha = texture(alphaTexture, uv).r;
-    float light = texture(alphaTexture, uv).g;
 
     vec2 muv = (gl_FragCoord.xy - resolution * .5) / resolution.y;
     vec2 suv = vec2(uv.x, uv.y-.35*scrollY);
@@ -177,9 +176,7 @@ export default `
     vec3 col = clouds(muv, s, mask);
     col += getRainColor(suv, s);
     col += getStormColor(suv, s, mask);
-    color += light * 5.0;
     col = mix(col, color, alpha * exp(-ldepth*5.0));
-    col *= 1.-pow(suv.y-.65, 2.0); 
     outputColor = vec4(col, 1.0);
   }
 `;

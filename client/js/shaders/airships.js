@@ -1,5 +1,7 @@
 const airships = {
-  uniforms: {},
+  uniforms: {
+    lightMult: { value: 5.0 },
+  },
   vertexShader: `
     attribute vec2 scale;
     attribute vec4 offsetVel;
@@ -31,24 +33,28 @@ const airships = {
 
       vUv = vec2(mix(1.-uv.x, uv.x, rs.y*.5+.5), uv.y);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0); 
-    }`,
+    }
+  `,
   fragmentShader: `
     layout(location = 0) out vec4 color;
     layout(location = 1) out vec4 noise;
     layout(location = 2) out vec4 colortex2;
-    uniform sampler2D dif;
-    uniform sampler2D light;
+
     in vec2 vUv;
+
+    uniform sampler2D dif;
+    uniform float lightMult;
 
     void main() 
     {
       vec4 col = texture(dif, vUv);
-      float light = texture(light, vUv).r;
       if (col.a <= 0.05) discard;
       color = col;
+      color.rgb *= lightMult;
       noise = vec4(0.0);
-      colortex2 = vec4(col.a, light, 0.0, 1.0);
-    }`,
+      colortex2 = vec4(col.a, 0.0, 0.0, 1.0);
+    }
+  `,
 };
 
 export default airships;

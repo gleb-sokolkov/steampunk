@@ -9,6 +9,7 @@ const basic = {
     jitterVX: { value: new Vector2(0, 0) },
     jitterVY: { value: new Vector2(0, 0) },
     noise: { value: null },
+    lightMult: { value: 3.0 },
   },
   vertexShader: `
     out vec2 vuv;
@@ -50,15 +51,15 @@ const basic = {
     in vec2 vuv;
 
     uniform sampler2D dif;
-    uniform sampler2D light;
+    uniform float lightMult;
 
     void main() {
       vec4 col = texture(dif, vuv);
-      float light = texture(light, vuv).r;
       if(col.a <= 0.1) discard;
       color = col;
+      color.rgb *= lightMult;
       noise = vec4(0.0);
-      colortex2 = vec4(col.a, light, 0.0, 1.0);
+      colortex2 = vec4(col.a, 0.0, 0.0, 1.0);
     }
   `,
 };

@@ -1,10 +1,9 @@
 import {
   PlaneGeometry, Mesh, Vector2, ShaderMaterial, GLSL3,
   ClampToEdgeWrapping, InstancedBufferGeometry, BufferAttribute,
-  NearestFilter, TextureLoader,
+  NearestFilter,
 } from 'three';
-
-const loader = new TextureLoader();
+import { loader } from './constants';
 
 function clamp(min, value, max) {
   return Math.min(Math.max(min, value), max);
@@ -39,7 +38,6 @@ function imageSizeSprite(textures, config, pivot = new Vector2(0.0, 0.0)) {
     uniforms: {
       ...config.uniforms,
       dif: { value: textures.dif },
-      light: { value: textures.light },
     },
     transparent: true,
     depthTest: true,

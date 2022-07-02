@@ -26,6 +26,7 @@
     "express": "^4.17.2",
     "html2canvas": "^1.4.0",
     "lodash": "^4.17.21",
+    "nodemon": "^2.0.16",
     "postprocessing": "^6.23.2",
     "regenerator-runtime": "^0.13.9",
     "rxjs": "^7.4.0",

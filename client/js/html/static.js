@@ -171,6 +171,7 @@ export class AirshipParticleObj extends HTMLObj {
     const material = new ShaderMaterial({
       ...this.config,
       uniforms: {
+        ...this.config.uniforms,
         ...updatableU,
         dif: { value: textures.dif },
         light: { value: textures.light },

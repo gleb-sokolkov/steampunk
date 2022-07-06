@@ -1,6 +1,6 @@
 const airships = {
   uniforms: {
-    lightMult: { value: 5.0 },
+    lightMult: { value: 10.0 },
   },
   vertexShader: `
     attribute vec2 scale;

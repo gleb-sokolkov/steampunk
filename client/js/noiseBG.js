@@ -21,6 +21,8 @@ import {
 import { HTMLCreator } from './html/htmlFactory';
 import BottomVignetteEffect from './effects/bottom-vignette';
 
+// TODO: add bezier curve animation
+
 // --------------------------------------------------------------------------------- Render elements
 const htmlCreator = new HTMLCreator();
 const preScene = new Scene();
@@ -214,7 +216,7 @@ async function init() {
   // --------------------------------------------------------------------------------- Effects
 
   // --------------------------------------------------------------------------------- Composer
-  composer = new EffectComposer(renderer, { depthBuffer: false });
+  composer = new EffectComposer(renderer);
   const geometry = new EffectPass(main_camera, bgEffect);
   const effectPass = new EffectPass(
     main_camera,
@@ -256,7 +258,7 @@ async function init() {
       bloomEffect.resolution.width = parseInt(value);
       bloomEffect.resolution.height = parseInt(value);
     });
-  bloomFolder.add(bloomEffect, 'intensity', 0, 5).name('intensity').setValue(1.7);
+  bloomFolder.add(bloomEffect, 'intensity', 0, 5).name('intensity').setValue(1.3);
   // --------------------------------------------------------------------------------- GUI
 
   animate();

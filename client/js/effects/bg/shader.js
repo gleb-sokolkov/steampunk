@@ -176,7 +176,7 @@ export default `
     vec3 col = clouds(muv, s, mask);
     col += getRainColor(suv, s);
     col += getStormColor(suv, s, mask);
-    col = mix(col, color, alpha * exp(-ldepth*5.0));
+    col = mix(col, color * 3.0, alpha * exp(-ldepth*5.0));
     outputColor = vec4(col, 1.0);
   }
 `;

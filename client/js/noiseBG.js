@@ -258,7 +258,7 @@ async function init() {
       bloomEffect.resolution.width = parseInt(value);
       bloomEffect.resolution.height = parseInt(value);
     });
-  bloomFolder.add(bloomEffect, 'intensity', 0, 5).name('intensity').setValue(1.3);
+  bloomFolder.add(bloomEffect, 'intensity', 0, 5).name('intensity').setValue(1.05);
   // --------------------------------------------------------------------------------- GUI
 
   animate();

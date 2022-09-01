@@ -27,7 +27,7 @@
     "html2canvas": "^1.4.0",
     "lodash": "^4.17.21",
     "nodemon": "^2.0.16",
-    "postprocessing": "^6.23.2",
+    "postprocessing": "^6.28.7",
     "regenerator-runtime": "^0.13.9",
     "rxjs": "^7.4.0",
     "three": "^0.138.0"

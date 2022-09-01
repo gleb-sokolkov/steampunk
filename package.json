@@ -30,7 +30,7 @@
     "postprocessing": "^6.23.2",
     "regenerator-runtime": "^0.13.9",
     "rxjs": "^7.4.0",
-    "three": "^0.138.0"
+    "three": "^0.144.0"
   },
   "devDependencies": {
     "@babel/core": "^7.17.0",

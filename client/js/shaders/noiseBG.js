@@ -53,8 +53,8 @@ const noiseBG = {
     }
 
     #define NUM_OCTAVES 3
-    const float size = 2.0;
-    const vec2 speed = vec2(0.25, 0.1);
+    const float size = 1.5;
+    const vec2 speed = vec2(0.25, 0.2);
 
     float fbm(vec2 x) 
     {
